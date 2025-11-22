@@ -1257,7 +1257,7 @@ final class Tabesh {
         
         wp_localize_script('tabesh-frontend', 'tabeshData', array(
             'ajaxUrl' => admin_url('admin-ajax.php'),
-            'restUrl' => untrailingslashit(rest_url('tabesh/v1')),
+            'restUrl' => rest_url(TABESH_REST_NAMESPACE),
             'nonce' => wp_create_nonce('wp_rest'),
             'ajaxNonce' => wp_create_nonce('tabesh_nonce'), // For AJAX backward compatibility (field name: 'security')
             'logoutUrl' => wp_logout_url(home_url()),
@@ -1283,7 +1283,7 @@ final class Tabesh {
         
         // Also provide TabeshSettings for compatibility
         wp_localize_script('tabesh-frontend', 'TabeshSettings', array(
-            'rest_url' => untrailingslashit(rest_url('tabesh/v1')),
+            'rest_url' => rest_url(TABESH_REST_NAMESPACE),
             'nonce' => wp_create_nonce('wp_rest'),
             'i18n' => array(
                 'calculating' => __('در حال محاسبه...', 'tabesh'),
@@ -1321,7 +1321,7 @@ final class Tabesh {
 
         wp_localize_script('tabesh-admin', 'tabeshAdminData', array(
             'ajaxUrl' => admin_url('admin-ajax.php'),
-            'restUrl' => untrailingslashit(rest_url('tabesh/v1')),
+            'restUrl' => rest_url(TABESH_REST_NAMESPACE),
             'nonce' => wp_create_nonce('wp_rest')
         ));
     }

@@ -9,6 +9,13 @@
 (function($) {
     'use strict';
 
+    // Helper function to safely construct REST URLs without double slashes
+    function buildRestUrl(base, endpoint) {
+        const cleanBase = base.replace(/\/+$/, ''); // Remove trailing slashes
+        const cleanEndpoint = endpoint.replace(/^\/+/, ''); // Remove leading slashes
+        return cleanBase + '/' + cleanEndpoint;
+    }
+
     // Add global error handler to prevent external JS errors from breaking file upload functionality
     window.addEventListener('error', function(event) {
         // Check if error is from noUiSlider or other external libraries
@@ -200,12 +207,12 @@
                 size: file.size,
                 category: category,
                 orderId: orderId,
-                url: tabeshData.restUrl + '/upload-file'
+                url: buildRestUrl(tabeshData.restUrl, 'upload-file')
             });
 
             // Upload file
             $.ajax({
-                url: tabeshData.restUrl + '/upload-file',
+                url: buildRestUrl(tabeshData.restUrl, 'upload-file'),
                 type: 'POST',
                 data: formData,
                 processData: false,
@@ -295,7 +302,7 @@
             var $message = $container.find('.tabesh-upload-message');
 
             $.ajax({
-                url: tabeshData.restUrl + '/validate-file',
+                url: buildRestUrl(tabeshData.restUrl, 'validate-file'),
                 type: 'POST',
                 data: {
                     file_id: fileId
