@@ -5,6 +5,13 @@
 (function($) {
     'use strict';
 
+    // Helper function to safely construct REST URLs without double slashes
+    function buildRestUrl(base, endpoint) {
+        const cleanBase = base.replace(/\/+$/, ''); // Remove trailing slashes
+        const cleanEndpoint = endpoint.replace(/^\/+/, ''); // Remove leading slashes
+        return cleanBase + '/' + cleanEndpoint;
+    }
+
     // Dynamic Parameter Manager Class
     class TabeshParameterManager {
         constructor() {
@@ -332,7 +339,7 @@
             $select.prop('disabled', true);
 
             $.ajax({
-                url: tabeshAdminData.restUrl + '/update-status',
+                url: buildRestUrl(tabeshAdminData.restUrl, '/update-status'),
                 method: 'POST',
                 contentType: 'application/json',
                 beforeSend: (xhr) => {
@@ -509,7 +516,7 @@
 
         approveFile(fileId) {
             $.ajax({
-                url: tabeshAdminData.restUrl + '/approve-file',
+                url: buildRestUrl(tabeshAdminData.restUrl, '/approve-file'),
                 type: 'POST',
                 data: {
                     file_id: fileId
@@ -589,7 +596,7 @@
 
         rejectFile(fileId, reason) {
             $.ajax({
-                url: tabeshAdminData.restUrl + '/reject-file',
+                url: buildRestUrl(tabeshAdminData.restUrl, '/reject-file'),
                 type: 'POST',
                 data: {
                     file_id: fileId,
@@ -673,7 +680,7 @@
 
         addComment(fileId, comment) {
             $.ajax({
-                url: tabeshAdminData.restUrl + '/file-comment',
+                url: buildRestUrl(tabeshAdminData.restUrl, '/file-comment'),
                 type: 'POST',
                 data: {
                     file_id: fileId,
@@ -743,7 +750,7 @@
 
         loadComments(fileId) {
             $.ajax({
-                url: tabeshAdminData.restUrl + '/file-comments/' + fileId,
+                url: buildRestUrl(tabeshAdminData.restUrl, '/file-comments/' + fileId),
                 type: 'GET',
                 headers: {
                     'X-WP-Nonce': tabeshAdminData.nonce
@@ -787,7 +794,7 @@
         downloadFile(fileId) {
             // Request a download token from the server
             $.ajax({
-                url: tabeshAdminData.restUrl + '/generate-download-token',
+                url: buildRestUrl(tabeshAdminData.restUrl, '/generate-download-token'),
                 type: 'POST',
                 data: {
                     file_id: fileId

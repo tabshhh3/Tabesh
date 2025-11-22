@@ -16,6 +16,13 @@
         }
     }, true);
 
+    // Helper function to safely construct REST URLs without double slashes
+    function buildRestUrl(base, endpoint) {
+        const cleanBase = base.replace(/\/+$/, ''); // Remove trailing slashes
+        const cleanEndpoint = endpoint.replace(/^\/+/, ''); // Remove leading slashes
+        return cleanBase + '/' + cleanEndpoint;
+    }
+
     // Defensive fallback for getOption if it doesn't exist
     if (typeof getOption !== 'function') {
         window.getOption = function(key, defaultValue) {
@@ -274,13 +281,16 @@
                 // Show loading
                 this.$calculateBtn.prop('disabled', true).html('<span class="tabesh-loading"></span> در حال محاسبه...');
                 
-                console.log('Tabesh: Sending AJAX request to:', tabeshData.restUrl + '/calculate-price');
+                // Construct URL safely to avoid double slashes
+                const requestUrl = buildRestUrl(tabeshData.restUrl, '/calculate-price');
+                
+                console.log('Tabesh: Sending AJAX request to:', requestUrl);
                 console.log('Tabesh: Request data:', JSON.stringify(this.formData));
                 console.log('Tabesh: Extras in request:', this.formData.extras);
 
                 // Call API
                 $.ajax({
-                    url: tabeshData.restUrl + '/calculate-price',
+                    url: requestUrl,
                     method: 'POST',
                     contentType: 'application/json',
                     beforeSend: (xhr) => {
@@ -396,9 +406,12 @@
             const restUrl = (typeof TabeshSettings !== 'undefined' && TabeshSettings.rest_url) 
                 ? TabeshSettings.rest_url 
                 : tabeshData.restUrl;
+            
+            // Construct URL safely to avoid double slashes
+            const requestUrl = buildRestUrl(restUrl, '/submit-order');
 
             let ajaxSettings = {
-                url: restUrl + '/submit-order',
+                url: requestUrl,
                 method: 'POST',
                 beforeSend: (xhr) => {
                     xhr.setRequestHeader('X-WP-Nonce', nonce);

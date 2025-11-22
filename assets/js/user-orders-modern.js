@@ -8,6 +8,13 @@
 (function($) {
     'use strict';
 
+    // Helper function to safely construct REST URLs without double slashes
+    function buildRestUrl(base, endpoint) {
+        const cleanBase = base.replace(/\/+$/, ''); // Remove trailing slashes
+        const cleanEndpoint = endpoint.replace(/^\/+/, ''); // Remove leading slashes
+        return cleanBase + '/' + cleanEndpoint;
+    }
+
     // Main class for User Orders Panel
     class TabeshUserOrdersModern {
         constructor() {
@@ -103,7 +110,7 @@
         // Load summary data
         loadSummary() {
             $.ajax({
-                url: tabeshData.restUrl + '/user-orders/summary',
+                url: buildRestUrl(tabeshData.restUrl, '/user-orders/summary'),
                 method: 'GET',
                 headers: {
                     'X-WP-Nonce': tabeshData.nonce
@@ -159,7 +166,7 @@
             this.showSearchLoading();
 
             $.ajax({
-                url: tabeshData.restUrl + '/user-orders/search',
+                url: buildRestUrl(tabeshData.restUrl, '/user-orders/search'),
                 method: 'GET',
                 data: { q: query },
                 headers: {
@@ -263,7 +270,7 @@
             `);
 
             $.ajax({
-                url: tabeshData.restUrl + '/user-orders/' + orderId,
+                url: buildRestUrl(tabeshData.restUrl, '/user-orders/' + orderId),
                 method: 'GET',
                 headers: {
                     'X-WP-Nonce': tabeshData.nonce

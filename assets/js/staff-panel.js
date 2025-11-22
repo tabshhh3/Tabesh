@@ -8,6 +8,13 @@
 (function($) {
     'use strict';
 
+    // Helper function to safely construct REST URLs without double slashes
+    function buildRestUrl(base, endpoint) {
+        const cleanBase = base.replace(/\/+$/, ''); // Remove trailing slashes
+        const cleanEndpoint = endpoint.replace(/^\/+/, ''); // Remove leading slashes
+        return cleanBase + '/' + cleanEndpoint;
+    }
+
     // Staff Panel Controller
     const StaffPanel = {
         // Configuration
@@ -346,7 +353,7 @@
 
             // Send AJAX request
             $.ajax({
-                url: tabeshData.restUrl + '/staff/update-status',
+                url: buildRestUrl(tabeshData.restUrl, '/staff/update-status'),
                 method: 'POST',
                 contentType: 'application/json',
                 beforeSend: function(xhr) {
