@@ -216,7 +216,6 @@ final class Tabesh {
         $this->user = new Tabesh_User();
         $this->notifications = new Tabesh_Notifications();
         $this->woocommerce = new Tabesh_WooCommerce();
-        
         // Initialize file management handlers
         $this->file_manager = new Tabesh_File_Manager();
         $this->ftp_handler = new Tabesh_FTP_Handler();
