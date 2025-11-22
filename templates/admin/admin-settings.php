@@ -10,7 +10,13 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-$admin = Tabesh()->admin;
+// Ensure plugin is properly initialized
+$tabesh = function_exists('Tabesh') ? Tabesh() : null;
+if (!$tabesh || !isset($tabesh->admin) || !$tabesh->admin) {
+    wp_die(__('خطا: افزونه تابش به درستی راه‌اندازی نشده است. لطفاً از نصب صحیح WooCommerce اطمینان حاصل کنید.', 'tabesh'));
+}
+
+$admin = $tabesh->admin;
 ?>
 
 <div class="wrap tabesh-admin-settings" dir="rtl">
