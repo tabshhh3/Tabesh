@@ -97,14 +97,17 @@
                 const $card = $(this);
                 const orderData = {
                     id: $card.data('order-id'),
-                    number: $card.data('order-number'),
-                    title: $card.data('book-title'),
-                    size: $card.data('book-size'),
-                    status: $card.data('status'),
-                    customer: $card.data('customer-name'),
-                    $element: $card
+                    number: $card.find('.order-number').text(),
+                    title: $card.find('.book-title').text(),
+                    size: $card.find('[data-search-size]').data('search-size'),
+                    status: $card.find('.status-badge').data('status'),
+                    customer: $card.find('[data-search-customer]').data('search-customer'),
+                    searchText: $card.find('.order-card-header').text().toLowerCase()
                 };
-                self.state.allOrders.push(orderData);
+                self.state.allOrders.push({
+                    element: $card,
+                    data: orderData
+                });
             });
         },
 
@@ -135,17 +138,18 @@
             if (!query) {
                 // Show all orders
                 this.displayOrders(this.state.allOrders);
-                $('.search-results-info').hide();
+                this.updateSearchCount(this.state.allOrders.length, false);
                 return;
             }
 
             // Filter orders
             const filteredOrders = this.state.allOrders.filter(order => {
                 const searchableText = [
-                    order.number,
-                    order.title,
-                    order.size,
-                    order.customer
+                    order.data.number,
+                    order.data.title,
+                    order.data.size,
+                    order.data.customer,
+                    order.data.searchText
                 ].join(' ').toLowerCase();
                 
                 return searchableText.includes(query.toLowerCase());
@@ -153,16 +157,13 @@
 
             // Sort by relevance (exact matches first)
             filteredOrders.sort((a, b) => {
-                const aRelevance = this.calculateRelevance(a, query);
-                const bRelevance = this.calculateRelevance(b, query);
+                const aRelevance = this.calculateRelevance(a.data, query);
+                const bRelevance = this.calculateRelevance(b.data, query);
                 return bRelevance - aRelevance;
             });
 
             this.displayOrders(filteredOrders.slice(0, this.config.searchResultsPerPage));
             this.updateSearchCount(filteredOrders.length, filteredOrders.length > this.config.searchResultsPerPage);
-            
-            // Store filtered results for "load more"
-            this.state.filteredOrders = filteredOrders;
         },
 
         /**
@@ -173,22 +174,22 @@
             const queryLower = query.toLowerCase();
             
             // Exact match in order number (highest priority)
-            if (orderData.number && orderData.number.toLowerCase().includes(queryLower)) {
+            if (orderData.number.toLowerCase().includes(queryLower)) {
                 score += 100;
             }
             
             // Match in book title
-            if (orderData.title && orderData.title.toLowerCase().includes(queryLower)) {
+            if (orderData.title.toLowerCase().includes(queryLower)) {
                 score += 50;
             }
             
             // Match in size
-            if (orderData.size && orderData.size.toLowerCase().includes(queryLower)) {
+            if (orderData.size.toLowerCase().includes(queryLower)) {
                 score += 30;
             }
             
             // Match in customer name
-            if (orderData.customer && orderData.customer.toLowerCase().includes(queryLower)) {
+            if (orderData.customer.toLowerCase().includes(queryLower)) {
                 score += 40;
             }
             
@@ -204,7 +205,7 @@
             
             // Show filtered orders
             orders.forEach(order => {
-                order.$element.show();
+                order.element.show();
             });
 
             // Show "no results" message if needed
@@ -227,20 +228,24 @@
          * Update search count display
          */
         updateSearchCount: function(count, hasMore) {
-            $('.search-results-info').empty().hide();
-            $('.load-more-container').hide();
+            $('.search-result-count').remove();
+            $('.load-more-container').remove();
             
             if (this.state.searchQuery) {
                 const countText = count === 0 ? 'نتیجه‌ای یافت نشد' : 
                                  count === 1 ? '۱ نتیجه یافت شد' :
                                  `${this.toPersianNumber(count)} نتیجه یافت شد`;
                 
-                $('.search-results-info').html(`
-                    <span class="results-count">${countText}</span>
-                `).show();
+                this.$ordersGrid.before(`
+                    <div class="search-result-count">${countText}</div>
+                `);
 
                 if (hasMore) {
-                    $('.load-more-container').show();
+                    this.$ordersGrid.after(`
+                        <div class="load-more-container">
+                            <button class="load-more-btn">نمایش بیشتر</button>
+                        </div>
+                    `);
                 }
             }
         },
@@ -249,23 +254,32 @@
          * Load more search results
          */
         loadMoreResults: function() {
-            if (!this.state.filteredOrders) {
-                return;
-            }
-            
             this.state.searchPage++;
-            const start = (this.state.searchPage - 1) * this.config.searchResultsPerPage;
+            const start = this.state.searchPage * this.config.searchResultsPerPage;
             const end = start + this.config.searchResultsPerPage;
             
+            const query = this.state.searchQuery;
+            const filteredOrders = this.state.allOrders.filter(order => {
+                const searchableText = [
+                    order.data.number,
+                    order.data.title,
+                    order.data.size,
+                    order.data.customer,
+                    order.data.searchText
+                ].join(' ').toLowerCase();
+                
+                return searchableText.includes(query.toLowerCase());
+            });
+
             // Show next batch
-            const nextBatch = this.state.filteredOrders.slice(start, end);
+            const nextBatch = filteredOrders.slice(start, end);
             nextBatch.forEach(order => {
-                order.$element.show();
+                order.element.show();
             });
 
             // Update load more button
-            if (end >= this.state.filteredOrders.length) {
-                $('.load-more-container').hide();
+            if (end >= filteredOrders.length) {
+                $('.load-more-container').remove();
             }
         },
 

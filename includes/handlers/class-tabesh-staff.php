@@ -37,13 +37,58 @@ class Tabesh_Staff {
             ), 400);
         }
 
+        // Get current order to track old status
+        global $wpdb;
+        $table = $wpdb->prefix . 'tabesh_orders';
+        $current_order = $wpdb->get_row($wpdb->prepare(
+            "SELECT * FROM $table WHERE id = %d",
+            $order_id
+        ));
+
+        if (!$current_order) {
+            return new WP_REST_Response(array(
+                'success' => false,
+                'message' => __('سفارش یافت نشد', 'tabesh')
+            ), 404);
+        }
+
+        $old_status = $current_order->status;
+
+        // Update order status
         $order = Tabesh()->order;
         $result = $order->update_status($order_id, $status);
 
         if ($result) {
+            // Log the status change with staff information
+            $current_user = wp_get_current_user();
+            $staff_user_id = get_current_user_id();
+            
+            $logs_table = $wpdb->prefix . 'tabesh_logs';
+            $wpdb->insert(
+                $logs_table,
+                array(
+                    'order_id' => $order_id,
+                    'user_id' => $current_order->user_id,
+                    'staff_user_id' => $staff_user_id,
+                    'action' => 'status_change',
+                    'old_status' => $old_status,
+                    'new_status' => $status,
+                    'description' => sprintf(
+                        __('وضعیت توسط %s از "%s" به "%s" تغییر کرد', 'tabesh'),
+                        $current_user->display_name,
+                        $old_status,
+                        $status
+                    )
+                ),
+                array('%d', '%d', '%d', '%s', '%s', '%s', '%s')
+            );
+
             return new WP_REST_Response(array(
                 'success' => true,
-                'message' => __('وضعیت با موفقیت به‌روزرسانی شد', 'tabesh')
+                'message' => __('وضعیت با موفقیت به‌روزرسانی شد', 'tabesh'),
+                'staff_name' => $current_user->display_name,
+                'old_status' => $old_status,
+                'new_status' => $status
             ), 200);
         }
 
@@ -51,6 +96,109 @@ class Tabesh_Staff {
             'success' => false,
             'message' => __('خطا در به‌روزرسانی وضعیت', 'tabesh')
         ), 400);
+    }
+    
+    /**
+     * Search orders via REST API
+     *
+     * @param WP_REST_Request $request
+     * @return WP_REST_Response
+     */
+    public function search_orders_rest($request) {
+        $query = sanitize_text_field($request->get_param('q') ?? '');
+        $page = intval($request->get_param('page') ?? 1);
+        $per_page = intval($request->get_param('per_page') ?? 3);
+        
+        if (empty($query)) {
+            return new WP_REST_Response(array(
+                'success' => false,
+                'message' => __('عبارت جستجو خالی است', 'tabesh')
+            ), 400);
+        }
+        
+        $results = $this->search_orders($query, $page, $per_page);
+        
+        return new WP_REST_Response(array(
+            'success' => true,
+            'results' => $results['orders'],
+            'total' => $results['total'],
+            'page' => $page,
+            'per_page' => $per_page,
+            'has_more' => $results['has_more']
+        ), 200);
+    }
+    
+    /**
+     * Search orders by various criteria
+     *
+     * @param string $query Search query
+     * @param int $page Page number
+     * @param int $per_page Results per page
+     * @return array Search results
+     */
+    public function search_orders($query, $page = 1, $per_page = 3) {
+        global $wpdb;
+        $table = $wpdb->prefix . 'tabesh_orders';
+        
+        $offset = ($page - 1) * $per_page;
+        $query_like = '%' . $wpdb->esc_like($query) . '%';
+        
+        // Search in multiple fields
+        $sql = $wpdb->prepare(
+            "SELECT * FROM $table 
+            WHERE archived = 0 
+            AND (
+                order_number LIKE %s 
+                OR book_title LIKE %s 
+                OR book_size LIKE %s
+                OR paper_type LIKE %s
+                OR print_type LIKE %s
+                OR binding_type LIKE %s
+            )
+            ORDER BY 
+                CASE 
+                    WHEN order_number LIKE %s THEN 1
+                    WHEN book_title LIKE %s THEN 2
+                    WHEN book_size LIKE %s THEN 3
+                    ELSE 4
+                END,
+                created_at DESC
+            LIMIT %d OFFSET %d",
+            $query_like, $query_like, $query_like, $query_like, $query_like, $query_like,
+            $query_like, $query_like, $query_like,
+            $per_page + 1, $offset
+        );
+        
+        $results = $wpdb->get_results($sql);
+        
+        // Check if there are more results
+        $has_more = count($results) > $per_page;
+        if ($has_more) {
+            array_pop($results); // Remove the extra result
+        }
+        
+        // Get total count
+        $count_sql = $wpdb->prepare(
+            "SELECT COUNT(*) FROM $table 
+            WHERE archived = 0 
+            AND (
+                order_number LIKE %s 
+                OR book_title LIKE %s 
+                OR book_size LIKE %s
+                OR paper_type LIKE %s
+                OR print_type LIKE %s
+                OR binding_type LIKE %s
+            )",
+            $query_like, $query_like, $query_like, $query_like, $query_like, $query_like
+        );
+        
+        $total = $wpdb->get_var($count_sql);
+        
+        return array(
+            'orders' => $results,
+            'total' => intval($total),
+            'has_more' => $has_more
+        );
     }
 
     /**

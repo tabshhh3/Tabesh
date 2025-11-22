@@ -977,6 +977,12 @@ final class Tabesh {
             'permission_callback' => array($this, 'can_manage_orders')
         ));
         
+        register_rest_route(TABESH_REST_NAMESPACE, '/staff/search-orders', array(
+            'methods' => 'GET',
+            'callback' => array($this->staff, 'search_orders_rest'),
+            'permission_callback' => array($this, 'can_manage_orders')
+        ));
+        
         // Get correction fees for an order
         register_rest_route(TABESH_REST_NAMESPACE, '/order-correction-fees/(?P<order_id>\d+)', array(
             'methods' => 'GET',
@@ -1006,9 +1012,10 @@ final class Tabesh {
 
     /**
      * Check if user can manage orders
+     * Staff with edit_shop_orders capability and admins can manage orders
      */
     public function can_manage_orders() {
-        return current_user_can('manage_woocommerce');
+        return current_user_can('manage_woocommerce') || current_user_can('edit_shop_orders');
     }
 
     /**

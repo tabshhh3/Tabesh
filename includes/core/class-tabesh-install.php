@@ -18,7 +18,7 @@ class Tabesh_Install {
      * Current database version
      * Update this when schema changes are made
      */
-    const DB_VERSION = '1.1.0';
+    const DB_VERSION = '1.2.0';
 
     /**
      * Database version option name
@@ -105,6 +105,48 @@ class Tabesh_Install {
         } else {
             if (defined('WP_DEBUG') && WP_DEBUG) {
                 error_log('Tabesh: book_title column already exists');
+            }
+        }
+        
+        // Add staff_user_id column to logs table for tracking who made changes
+        $table_logs = $wpdb->prefix . 'tabesh_logs';
+        if (self::table_exists($table_logs)) {
+            if (!self::column_exists($table_logs, 'staff_user_id')) {
+                if (defined('WP_DEBUG') && WP_DEBUG) {
+                    error_log('Tabesh: Adding staff_user_id column to logs table');
+                }
+                
+                // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+                $result = $wpdb->query(
+                    "ALTER TABLE `{$table_logs}` 
+                    ADD COLUMN `staff_user_id` BIGINT(20) UNSIGNED DEFAULT NULL AFTER `user_id`,
+                    ADD KEY `staff_user_id` (`staff_user_id`)"
+                );
+                
+                if ($result === false) {
+                    error_log('Tabesh: ERROR - Failed to add staff_user_id column: ' . $wpdb->last_error);
+                } else {
+                    error_log('Tabesh: SUCCESS - Added staff_user_id column to logs table');
+                }
+            }
+            
+            if (!self::column_exists($table_logs, 'old_status')) {
+                if (defined('WP_DEBUG') && WP_DEBUG) {
+                    error_log('Tabesh: Adding old_status and new_status columns to logs table');
+                }
+                
+                // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+                $result = $wpdb->query(
+                    "ALTER TABLE `{$table_logs}` 
+                    ADD COLUMN `old_status` VARCHAR(50) DEFAULT NULL AFTER `action`,
+                    ADD COLUMN `new_status` VARCHAR(50) DEFAULT NULL AFTER `old_status`"
+                );
+                
+                if ($result === false) {
+                    error_log('Tabesh: ERROR - Failed to add status columns: ' . $wpdb->last_error);
+                } else {
+                    error_log('Tabesh: SUCCESS - Added status columns to logs table');
+                }
             }
         }
         
