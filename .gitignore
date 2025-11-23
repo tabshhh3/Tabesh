@@ -52,3 +52,7 @@ test-*.js
 
 # Ignore composer lock (for libraries, not applications)
 composer.lock
+
+# Composer dependencies
+vendor/
+composer.lock
