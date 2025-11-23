@@ -305,18 +305,13 @@ $status_order = array('pending', 'confirmed', 'processing', 'ready', 'completed'
                                 $sub_status_definitions = $order_handler->get_printing_sub_statuses();
                                 $sub_status_data = $order_handler->get_order_sub_status_data($order->id);
                                 
-                                // Initialize if not set
+                                // Initialize if not set (will be handled by order handler)
                                 if ($sub_status_data === null) {
                                     $sub_status_data = $order_handler->initialize_sub_statuses($order->id);
-                                    // Save initialized data
-                                    global $wpdb;
-                                    $wpdb->update(
-                                        $wpdb->prefix . 'tabesh_orders',
-                                        array('sub_statuses' => wp_json_encode($sub_status_data)),
-                                        array('id' => $order->id),
-                                        array('%s'),
-                                        array('%d')
-                                    );
+                                    // Save initialized data through order handler
+                                    if ($sub_status_data !== false) {
+                                        $order_handler->save_sub_status_data($order->id, $sub_status_data);
+                                    }
                                 }
                                 
                                 $completion = $order_handler->get_sub_status_completion($order->id);
@@ -337,7 +332,7 @@ $status_order = array('pending', 'confirmed', 'processing', 'ready', 'completed'
                                         foreach ($sub_status_definitions as $key => $definition):
                                             // Skip if optional and not applicable
                                             if (isset($definition['optional']) && $definition['optional']) {
-                                                if (empty($extras) || !is_array($extras) || count($extras) === 0) {
+                                                if (empty($extras) || !is_array($extras)) {
                                                     continue;
                                                 }
                                             }

@@ -998,7 +998,7 @@ class Tabesh_Order {
         foreach ($sub_statuses as $key => $data) {
             // Skip additional services if no extras
             if (isset($data['optional']) && $data['optional']) {
-                if (empty($extras) || !is_array($extras) || count($extras) === 0) {
+                if (empty($extras) || !is_array($extras)) {
                     continue;
                 }
             }
@@ -1035,6 +1035,30 @@ class Tabesh_Order {
         }
         
         return json_decode($sub_statuses_json, true);
+    }
+
+    /**
+     * Save sub-status data to database
+     * 
+     * Saves sub-status data as JSON in the orders table.
+     * 
+     * @param int $order_id Order ID
+     * @param array $sub_status_data Sub-status data array
+     * @return bool Success
+     */
+    public function save_sub_status_data($order_id, $sub_status_data) {
+        global $wpdb;
+        $table = $wpdb->prefix . 'tabesh_orders';
+        
+        $result = $wpdb->update(
+            $table,
+            array('sub_statuses' => wp_json_encode($sub_status_data)),
+            array('id' => $order_id),
+            array('%s'),
+            array('%d')
+        );
+        
+        return $result !== false;
     }
 
     /**
