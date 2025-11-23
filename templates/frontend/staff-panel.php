@@ -300,12 +300,8 @@ $status_order = array('pending', 'confirmed', 'processing', 'ready', 'completed'
 
                             <!-- Printing Workflow Sub-statuses (only visible for processing status) -->
                             <?php if ($order->status === 'processing'): 
-                                // Get or initialize printing substatus
-                                $printing_substatus = Tabesh()->printing_substatus->get_printing_substatus($order->id);
-                                if (!$printing_substatus) {
-                                    Tabesh()->printing_substatus->initialize_printing_substatus($order->id);
-                                    $printing_substatus = Tabesh()->printing_substatus->get_printing_substatus($order->id);
-                                }
+                                // Get or initialize printing substatus.
+                                $printing_substatus = Tabesh()->printing_substatus->get_or_initialize_printing_substatus($order->id);
                                 
                                 if ($printing_substatus):
                                     $percentage = Tabesh()->printing_substatus->get_completion_percentage($order->id);

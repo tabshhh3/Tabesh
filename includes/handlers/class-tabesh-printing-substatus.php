@@ -163,10 +163,10 @@ class Tabesh_Printing_Substatus {
 	}
 
 	/**
-	 * Get printing sub-status details for an order
+	 * Get printing sub-status details for an order.
 	 *
-	 * @param int $order_id Order ID
-	 * @return object|null Sub-status object or null
+	 * @param int $order_id Order ID.
+	 * @return object|null Sub-status object or null.
 	 */
 	public function get_printing_substatus( $order_id ) {
 		global $wpdb;
@@ -182,6 +182,25 @@ class Tabesh_Printing_Substatus {
 				$order_id
 			)
 		);
+
+		return $substatus;
+	}
+
+	/**
+	 * Get or initialize printing sub-status for an order.
+	 *
+	 * This method retrieves the printing sub-status or creates it if it doesn't exist.
+	 *
+	 * @param int $order_id Order ID.
+	 * @return object|null Sub-status object or null on failure.
+	 */
+	public function get_or_initialize_printing_substatus( $order_id ) {
+		$substatus = $this->get_printing_substatus( $order_id );
+
+		if ( ! $substatus ) {
+			$this->initialize_printing_substatus( $order_id );
+			$substatus = $this->get_printing_substatus( $order_id );
+		}
 
 		return $substatus;
 	}
@@ -514,17 +533,14 @@ class Tabesh_Printing_Substatus {
 			return;
 		}
 
-		// Send SMS
+		// Send SMS.
 		$message = sprintf(
 			__( 'سفارش شماره %s با موفقیت چاپ شد و آماده مرحله بعدی است.', 'tabesh' ),
 			$order->order_number
 		);
 
-		// Use reflection to call private send_sms method
-		$reflection = new ReflectionClass( $notifications );
-		$method     = $reflection->getMethod( 'send_sms' );
-		$method->setAccessible( true );
-		$method->invoke( $notifications, $user_phone, $message );
+		// Call public send_sms method.
+		$notifications->send_sms( $user_phone, $message );
 	}
 
 	/**
