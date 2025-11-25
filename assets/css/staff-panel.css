@@ -1410,3 +1410,139 @@ input:focus-visible,
     margin-bottom: 20px !important;
 }
 
+/* ==========================================
+   Print Substeps Section (New Feature)
+   ========================================== */
+
+.print-substeps-section {
+    padding: 25px;
+    background: var(--bg-primary);
+    border-bottom: 1px solid var(--text-muted);
+    border-radius: var(--border-radius-sm);
+    margin-top: 15px;
+}
+
+.print-substeps-section .section-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+    justify-content: space-between;
+}
+
+.progress-badge {
+    background: var(--accent-blue);
+    color: white;
+    padding: 6px 14px;
+    border-radius: var(--border-radius-full);
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.print-substeps-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.print-substep-item {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 16px;
+    background: var(--bg-card);
+    border-radius: var(--border-radius-sm);
+    border: 2px solid var(--text-muted);
+    transition: all var(--transition-speed);
+}
+
+.print-substep-item:hover {
+    border-color: var(--accent-blue);
+    box-shadow: var(--shadow-card);
+}
+
+.print-substep-item.completed {
+    border-color: var(--success);
+    background: linear-gradient(to left, var(--bg-card) 95%, rgba(16, 185, 129, 0.1) 100%);
+}
+
+.substep-checkbox-wrapper {
+    flex-shrink: 0;
+}
+
+.substep-checkbox {
+    width: 24px;
+    height: 24px;
+    cursor: pointer;
+    accent-color: var(--success);
+}
+
+.substep-content {
+    flex: 1;
+}
+
+.substep-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+}
+
+.substep-details {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+.substep-completed-badge {
+    flex-shrink: 0;
+    background: var(--success);
+    color: white;
+    padding: 6px 12px;
+    border-radius: var(--border-radius-full);
+    font-size: 13px;
+    font-weight: 700;
+}
+
+/* Dark mode adjustments for print substeps */
+[data-theme='dark'] .print-substeps-section {
+    background: var(--bg-secondary);
+}
+
+[data-theme='dark'] .print-substep-item {
+    border-color: var(--text-tertiary);
+}
+
+[data-theme='dark'] .print-substep-item.completed {
+    background: linear-gradient(to left, var(--bg-card) 95%, rgba(16, 185, 129, 0.15) 100%);
+}
+
+/* Mobile responsiveness for print substeps */
+@media (max-width: 768px) {
+    .print-substeps-section .section-header {
+        flex-wrap: wrap;
+    }
+    
+    .progress-badge {
+        order: 3;
+        width: 100%;
+        text-align: center;
+        margin-top: 10px;
+    }
+    
+    .print-substep-item {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .substep-checkbox-wrapper {
+        align-self: flex-start;
+    }
+    
+    .substep-completed-badge {
+        align-self: flex-end;
+        margin-top: 8px;
+    }
+}
+
+
