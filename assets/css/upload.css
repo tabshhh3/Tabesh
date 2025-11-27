@@ -1451,7 +1451,8 @@
     left: var(--space-lg);
 }
 
-[dir="rtl"] @keyframes slideIn {
+/* RTL slide in animation */
+@keyframes slideInRTL {
     from {
         opacity: 0;
         transform: translateX(-100%);
@@ -1460,6 +1461,10 @@
         opacity: 1;
         transform: translateX(0);
     }
+}
+
+[dir="rtl"] .toast {
+    animation: slideInRTL 0.3s ease;
 }
 
 [dir="rtl"] .theme-toggle {
