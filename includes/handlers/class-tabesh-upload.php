@@ -209,6 +209,41 @@ class Tabesh_Upload {
                 )
             )
         ));
+
+        // Approve file endpoint (Admin only)
+        register_rest_route(TABESH_REST_NAMESPACE, '/approve-file/(?P<file_id>\d+)', array(
+            'methods' => 'POST',
+            'callback' => array($this, 'rest_approve_file'),
+            'permission_callback' => array($this, 'check_admin_permission'),
+            'args' => array(
+                'file_id' => array(
+                    'required' => true,
+                    'validate_callback' => function($param) {
+                        return is_numeric($param) && $param > 0;
+                    }
+                )
+            )
+        ));
+
+        // Reject file endpoint (Admin only)
+        register_rest_route(TABESH_REST_NAMESPACE, '/reject-file/(?P<file_id>\d+)', array(
+            'methods' => 'POST',
+            'callback' => array($this, 'rest_reject_file'),
+            'permission_callback' => array($this, 'check_admin_permission'),
+            'args' => array(
+                'file_id' => array(
+                    'required' => true,
+                    'validate_callback' => function($param) {
+                        return is_numeric($param) && $param > 0;
+                    }
+                ),
+                'reason' => array(
+                    'required' => false,
+                    'type' => 'string',
+                    'sanitize_callback' => 'sanitize_textarea_field'
+                )
+            )
+        ));
     }
 
     /**
@@ -614,6 +649,121 @@ class Tabesh_Upload {
         return new WP_REST_Response(array(
             'success' => true,
             'message' => __('فایل با موفقیت حذف شد', 'tabesh')
+        ), 200);
+    }
+
+    /**
+     * REST: Approve file (Admin only)
+     *
+     * @param WP_REST_Request $request Request object
+     * @return WP_REST_Response
+     */
+    public function rest_approve_file($request) {
+        $file_id = intval($request->get_param('file_id'));
+        $admin_id = get_current_user_id();
+        
+        global $wpdb;
+        $table = $wpdb->prefix . 'tabesh_files';
+        
+        $file = $wpdb->get_row($wpdb->prepare(
+            "SELECT * FROM $table WHERE id = %d AND deleted_at IS NULL",
+            $file_id
+        ));
+        
+        if (!$file) {
+            return new WP_REST_Response(array(
+                'success' => false,
+                'message' => __('فایل یافت نشد', 'tabesh')
+            ), 404);
+        }
+        
+        // Update file status
+        $result = $wpdb->update(
+            $table,
+            array(
+                'status' => 'approved',
+                'approved_at' => current_time('mysql'),
+                'approved_by' => $admin_id,
+                'updated_at' => current_time('mysql')
+            ),
+            array('id' => $file_id)
+        );
+        
+        if ($result === false) {
+            return new WP_REST_Response(array(
+                'success' => false,
+                'message' => __('خطا در تایید فایل', 'tabesh')
+            ), 500);
+        }
+        
+        // Log the action
+        $this->log_action($file->order_id, $admin_id, 'file_approved', sprintf(
+            __('فایل "%s" تایید شد', 'tabesh'),
+            $file->stored_filename
+        ));
+        
+        return new WP_REST_Response(array(
+            'success' => true,
+            'message' => __('فایل با موفقیت تایید شد', 'tabesh')
+        ), 200);
+    }
+
+    /**
+     * REST: Reject file (Admin only)
+     *
+     * @param WP_REST_Request $request Request object
+     * @return WP_REST_Response
+     */
+    public function rest_reject_file($request) {
+        $file_id = intval($request->get_param('file_id'));
+        $reason = $request->get_param('reason');
+        $admin_id = get_current_user_id();
+        
+        global $wpdb;
+        $table = $wpdb->prefix . 'tabesh_files';
+        
+        $file = $wpdb->get_row($wpdb->prepare(
+            "SELECT * FROM $table WHERE id = %d AND deleted_at IS NULL",
+            $file_id
+        ));
+        
+        if (!$file) {
+            return new WP_REST_Response(array(
+                'success' => false,
+                'message' => __('فایل یافت نشد', 'tabesh')
+            ), 404);
+        }
+        
+        // Update file status
+        $result = $wpdb->update(
+            $table,
+            array(
+                'status' => 'rejected',
+                'rejection_reason' => $reason,
+                'rejected_at' => current_time('mysql'),
+                'rejected_by' => $admin_id,
+                'updated_at' => current_time('mysql')
+            ),
+            array('id' => $file_id)
+        );
+        
+        if ($result === false) {
+            return new WP_REST_Response(array(
+                'success' => false,
+                'message' => __('خطا در رد فایل', 'tabesh')
+            ), 500);
+        }
+        
+        // Log the action
+        $this->log_action($file->order_id, $admin_id, 'file_rejected', sprintf(
+            __('فایل "%s" رد شد: %s', 'tabesh'),
+            $file->stored_filename,
+            $reason
+        ));
+        
+        return new WP_REST_Response(array(
+            'success' => true,
+            'message' => __('فایل با موفقیت رد شد', 'tabesh')
         ), 200);
     }
 
