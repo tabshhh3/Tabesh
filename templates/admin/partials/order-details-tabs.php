@@ -44,10 +44,25 @@ $customer_name = $user ? $user->display_name : __('نامشخص', 'tabesh');
 $customer_email = $user ? $user->user_email : '';
 $customer_phone = $user ? get_user_meta($order->user_id, 'billing_phone', true) : '';
 $customer_address = $user ? get_user_meta($order->user_id, 'billing_address_1', true) : '';
+$customer_address_2 = $user ? get_user_meta($order->user_id, 'billing_address_2', true) : '';
 $customer_city = $user ? get_user_meta($order->user_id, 'billing_city', true) : '';
 $customer_state = $user ? get_user_meta($order->user_id, 'billing_state', true) : '';
 $customer_postcode = $user ? get_user_meta($order->user_id, 'billing_postcode', true) : '';
+$customer_country = $user ? get_user_meta($order->user_id, 'billing_country', true) : '';
+$customer_company = $user ? get_user_meta($order->user_id, 'billing_company', true) : '';
 $customer_registered = $user ? date_i18n('Y/m/d', strtotime($user->user_registered)) : '';
+
+// Shipping address fields
+$shipping_first_name = $user ? get_user_meta($order->user_id, 'shipping_first_name', true) : '';
+$shipping_last_name = $user ? get_user_meta($order->user_id, 'shipping_last_name', true) : '';
+$shipping_company = $user ? get_user_meta($order->user_id, 'shipping_company', true) : '';
+$shipping_address_1 = $user ? get_user_meta($order->user_id, 'shipping_address_1', true) : '';
+$shipping_address_2 = $user ? get_user_meta($order->user_id, 'shipping_address_2', true) : '';
+$shipping_city = $user ? get_user_meta($order->user_id, 'shipping_city', true) : '';
+$shipping_state = $user ? get_user_meta($order->user_id, 'shipping_state', true) : '';
+$shipping_postcode = $user ? get_user_meta($order->user_id, 'shipping_postcode', true) : '';
+$shipping_country = $user ? get_user_meta($order->user_id, 'shipping_country', true) : '';
+$shipping_phone = $user ? get_user_meta($order->user_id, 'shipping_phone', true) : '';
 
 // Get user order statistics
 $user_total_orders = $wpdb->get_var($wpdb->prepare(
@@ -67,12 +82,28 @@ $user_total_spent = $wpdb->get_var($wpdb->prepare(
     $order->user_id
 ));
 
-// Get order files
+// Get order files - sorted by category, version, and upload date
 $files_table = $wpdb->prefix . 'tabesh_files';
 $order_files = $wpdb->get_results($wpdb->prepare(
-    "SELECT * FROM $files_table WHERE order_id = %d AND deleted_at IS NULL ORDER BY created_at DESC",
+    "SELECT * FROM $files_table WHERE order_id = %d AND deleted_at IS NULL ORDER BY file_category ASC, version ASC, created_at ASC",
     $order_id
 ));
+
+// Group files by category for organized display
+$file_categories = array(
+    'book_cover' => array('label' => __('فایل‌های جلد', 'tabesh'), 'icon' => '📕', 'files' => array()),
+    'book_content' => array('label' => __('فایل‌های متن', 'tabesh'), 'icon' => '📄', 'files' => array()),
+    'documents' => array('label' => __('مدارک', 'tabesh'), 'icon' => '📋', 'files' => array()),
+    'other' => array('label' => __('سایر', 'tabesh'), 'icon' => '📎', 'files' => array()),
+);
+
+foreach ($order_files as $file) {
+    $category = $file->file_category ?: 'other';
+    if (!isset($file_categories[$category])) {
+        $category = 'other';
+    }
+    $file_categories[$category]['files'][] = $file;
+}
 
 // Get status history
 $logs_table = $wpdb->prefix . 'tabesh_logs';
@@ -86,12 +117,14 @@ $status_history = $wpdb->get_results($wpdb->prepare(
     $order_id
 ));
 
-// Get print substeps if in processing status
+// Get print substeps - show for all orders that have substeps (not limited to processing status)
 $substeps = array();
 $substeps_progress = 0;
-if ($order->status === 'processing' && isset(Tabesh()->print_substeps) && method_exists(Tabesh()->print_substeps, 'get_order_substeps')) {
+if (isset(Tabesh()->print_substeps) && method_exists(Tabesh()->print_substeps, 'get_order_substeps')) {
     $substeps = Tabesh()->print_substeps->get_order_substeps($order_id);
-    $substeps_progress = Tabesh()->print_substeps->calculate_print_progress($order_id);
+    if (!empty($substeps)) {
+        $substeps_progress = Tabesh()->print_substeps->calculate_print_progress($order_id);
+    }
 }
 
 // Parse extras
@@ -212,39 +245,53 @@ $status_labels = array(
             <p><?php esc_html_e('هیچ فایلی برای این سفارش آپلود نشده است.', 'tabesh'); ?></p>
         </div>
     <?php else: ?>
-        <div class="files-grid">
-            <?php foreach ($order_files as $file): 
-                $file_icon = '📄';
-                $mime_parts = explode('/', $file->mime_type);
-                $type = $mime_parts[0] ?? '';
-                if ($type === 'image') $file_icon = '🖼️';
-                elseif ($file->mime_type === 'application/pdf') $file_icon = '📕';
-                elseif (strpos($file->mime_type, 'zip') !== false || strpos($file->mime_type, 'rar') !== false) $file_icon = '🗜️';
-                
-                $file_size = $file->file_size;
-                if ($file_size >= 1048576) {
-                    $file_size_display = number_format($file_size / 1048576, 1) . ' MB';
-                } else {
-                    $file_size_display = number_format($file_size / 1024, 1) . ' KB';
-                }
-            ?>
-                <div class="file-card">
-                    <div class="file-icon"><?php echo $file_icon; ?></div>
-                    <div class="file-info">
-                        <div class="file-name" title="<?php echo esc_attr($file->original_filename); ?>"><?php echo esc_html($file->original_filename); ?></div>
-                        <div class="file-meta">
-                            <?php echo esc_html($file_size_display); ?> • <?php echo esc_html($file->file_category); ?>
-                            <?php if (!empty($file->status)): ?>
-                                <br><small><?php echo esc_html__('وضعیت:', 'tabesh') . ' ' . esc_html($file->status); ?></small>
-                            <?php endif; ?>
-                        </div>
+        <?php foreach ($file_categories as $category_key => $category): ?>
+            <?php if (!empty($category['files'])): ?>
+                <div class="file-category-section">
+                    <div class="file-category-header">
+                        <span class="file-category-icon"><?php echo esc_html($category['icon']); ?></span>
+                        <span class="file-category-title"><?php echo esc_html($category['label']); ?></span>
+                        <span class="file-category-count">(<?php echo count($category['files']); ?> <?php esc_html_e('فایل', 'tabesh'); ?>)</span>
                     </div>
-                    <button class="file-download-btn" data-file-id="<?php echo esc_attr($file->id); ?>">
-                        ⬇️ <?php esc_html_e('دانلود', 'tabesh'); ?>
-                    </button>
+                    <div class="files-grid">
+                        <?php foreach ($category['files'] as $file): 
+                            $file_icon = '📄';
+                            $mime_parts = explode('/', $file->mime_type);
+                            $type = $mime_parts[0] ?? '';
+                            if ($type === 'image') $file_icon = '🖼️';
+                            elseif ($file->mime_type === 'application/pdf') $file_icon = '📕';
+                            elseif (strpos($file->mime_type, 'zip') !== false || strpos($file->mime_type, 'rar') !== false) $file_icon = '🗜️';
+                            
+                            $file_size = $file->file_size;
+                            if ($file_size >= 1048576) {
+                                $file_size_display = number_format($file_size / 1048576, 1) . ' MB';
+                            } else {
+                                $file_size_display = number_format($file_size / 1024, 1) . ' KB';
+                            }
+                        ?>
+                            <div class="file-card">
+                                <div class="file-icon"><?php echo $file_icon; ?></div>
+                                <div class="file-info">
+                                    <div class="file-name" title="<?php echo esc_attr($file->original_filename); ?>"><?php echo esc_html($file->original_filename); ?></div>
+                                    <div class="file-meta">
+                                        <?php echo esc_html($file_size_display); ?>
+                                        <?php if (!empty($file->version)): ?>
+                                            • <span class="file-version"><?php echo esc_html__('نسخه', 'tabesh') . ' ' . esc_html($file->version); ?></span>
+                                        <?php endif; ?>
+                                        <?php if (!empty($file->status)): ?>
+                                            <br><small><?php echo esc_html__('وضعیت:', 'tabesh') . ' ' . esc_html($file->status); ?></small>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
+                                <button class="file-download-btn" data-file-id="<?php echo esc_attr($file->id); ?>">
+                                    ⬇️ <?php esc_html_e('دانلود', 'tabesh'); ?>
+                                </button>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
                 </div>
-            <?php endforeach; ?>
-        </div>
+            <?php endif; ?>
+        <?php endforeach; ?>
     <?php endif; ?>
 </div>
 
@@ -365,6 +412,8 @@ $status_labels = array(
         </div>
         
         <div class="customer-details-section">
+            <!-- Billing Information Section -->
+            <h4 class="customer-section-title" style="grid-column: 1 / -1; margin-bottom: 10px; color: var(--admin-text-primary);"><?php esc_html_e('اطلاعات صورتحساب', 'tabesh'); ?></h4>
             <div class="customer-detail-card">
                 <div class="customer-detail-label"><?php esc_html_e('شناسه کاربر', 'tabesh'); ?></div>
                 <div class="customer-detail-value">#<?php echo esc_html($order->user_id); ?></div>
@@ -377,6 +426,12 @@ $status_labels = array(
                 <div class="customer-detail-label"><?php esc_html_e('شماره تماس', 'tabesh'); ?></div>
                 <div class="customer-detail-value"><?php echo esc_html($customer_phone ?: '—'); ?></div>
             </div>
+            <?php if (!empty($customer_company)): ?>
+            <div class="customer-detail-card">
+                <div class="customer-detail-label"><?php esc_html_e('شرکت', 'tabesh'); ?></div>
+                <div class="customer-detail-value"><?php echo esc_html($customer_company); ?></div>
+            </div>
+            <?php endif; ?>
             <div class="customer-detail-card">
                 <div class="customer-detail-label"><?php esc_html_e('استان', 'tabesh'); ?></div>
                 <div class="customer-detail-value"><?php echo esc_html($customer_state ?: '—'); ?></div>
@@ -389,11 +444,88 @@ $status_labels = array(
                 <div class="customer-detail-label"><?php esc_html_e('کد پستی', 'tabesh'); ?></div>
                 <div class="customer-detail-value"><?php echo esc_html($customer_postcode ?: '—'); ?></div>
             </div>
+            <?php if (!empty($customer_country)): ?>
+            <div class="customer-detail-card">
+                <div class="customer-detail-label"><?php esc_html_e('کشور', 'tabesh'); ?></div>
+                <div class="customer-detail-value"><?php echo esc_html($customer_country); ?></div>
+            </div>
+            <?php endif; ?>
             <?php if (!empty($customer_address)): ?>
             <div class="customer-detail-card" style="grid-column: 1 / -1;">
                 <div class="customer-detail-label"><?php esc_html_e('آدرس', 'tabesh'); ?></div>
                 <div class="customer-detail-value"><?php echo esc_html($customer_address); ?></div>
             </div>
+            <?php endif; ?>
+            <?php if (!empty($customer_address_2)): ?>
+            <div class="customer-detail-card" style="grid-column: 1 / -1;">
+                <div class="customer-detail-label"><?php esc_html_e('آدرس (ادامه)', 'tabesh'); ?></div>
+                <div class="customer-detail-value"><?php echo esc_html($customer_address_2); ?></div>
+            </div>
+            <?php endif; ?>
+            
+            <?php 
+            // Check if any shipping info exists
+            $has_shipping_info = !empty($shipping_first_name) || !empty($shipping_last_name) || 
+                                 !empty($shipping_address_1) || !empty($shipping_city) || 
+                                 !empty($shipping_state) || !empty($shipping_postcode);
+            if ($has_shipping_info): 
+            ?>
+            <!-- Shipping Information Section -->
+            <h4 class="customer-section-title" style="grid-column: 1 / -1; margin-top: 20px; margin-bottom: 10px; color: var(--admin-text-primary);"><?php esc_html_e('اطلاعات ارسال', 'tabesh'); ?></h4>
+            <?php if (!empty($shipping_first_name) || !empty($shipping_last_name)): ?>
+            <div class="customer-detail-card">
+                <div class="customer-detail-label"><?php esc_html_e('نام گیرنده', 'tabesh'); ?></div>
+                <div class="customer-detail-value"><?php echo esc_html(trim($shipping_first_name . ' ' . $shipping_last_name)); ?></div>
+            </div>
+            <?php endif; ?>
+            <?php if (!empty($shipping_company)): ?>
+            <div class="customer-detail-card">
+                <div class="customer-detail-label"><?php esc_html_e('شرکت', 'tabesh'); ?></div>
+                <div class="customer-detail-value"><?php echo esc_html($shipping_company); ?></div>
+            </div>
+            <?php endif; ?>
+            <?php if (!empty($shipping_phone)): ?>
+            <div class="customer-detail-card">
+                <div class="customer-detail-label"><?php esc_html_e('شماره تماس گیرنده', 'tabesh'); ?></div>
+                <div class="customer-detail-value"><?php echo esc_html($shipping_phone); ?></div>
+            </div>
+            <?php endif; ?>
+            <?php if (!empty($shipping_state)): ?>
+            <div class="customer-detail-card">
+                <div class="customer-detail-label"><?php esc_html_e('استان (ارسال)', 'tabesh'); ?></div>
+                <div class="customer-detail-value"><?php echo esc_html($shipping_state); ?></div>
+            </div>
+            <?php endif; ?>
+            <?php if (!empty($shipping_city)): ?>
+            <div class="customer-detail-card">
+                <div class="customer-detail-label"><?php esc_html_e('شهر (ارسال)', 'tabesh'); ?></div>
+                <div class="customer-detail-value"><?php echo esc_html($shipping_city); ?></div>
+            </div>
+            <?php endif; ?>
+            <?php if (!empty($shipping_postcode)): ?>
+            <div class="customer-detail-card">
+                <div class="customer-detail-label"><?php esc_html_e('کد پستی (ارسال)', 'tabesh'); ?></div>
+                <div class="customer-detail-value"><?php echo esc_html($shipping_postcode); ?></div>
+            </div>
+            <?php endif; ?>
+            <?php if (!empty($shipping_country)): ?>
+            <div class="customer-detail-card">
+                <div class="customer-detail-label"><?php esc_html_e('کشور (ارسال)', 'tabesh'); ?></div>
+                <div class="customer-detail-value"><?php echo esc_html($shipping_country); ?></div>
+            </div>
+            <?php endif; ?>
+            <?php if (!empty($shipping_address_1)): ?>
+            <div class="customer-detail-card" style="grid-column: 1 / -1;">
+                <div class="customer-detail-label"><?php esc_html_e('آدرس ارسال', 'tabesh'); ?></div>
+                <div class="customer-detail-value"><?php echo esc_html($shipping_address_1); ?></div>
+            </div>
+            <?php endif; ?>
+            <?php if (!empty($shipping_address_2)): ?>
+            <div class="customer-detail-card" style="grid-column: 1 / -1;">
+                <div class="customer-detail-label"><?php esc_html_e('آدرس ارسال (ادامه)', 'tabesh'); ?></div>
+                <div class="customer-detail-value"><?php echo esc_html($shipping_address_2); ?></div>
+            </div>
+            <?php endif; ?>
             <?php endif; ?>
         </div>
     </div>

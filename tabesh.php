@@ -1087,6 +1087,12 @@ final class Tabesh {
             'permission_callback' => array($this, 'can_manage_admin')
         ));
         
+        register_rest_route(TABESH_REST_NAMESPACE, '/admin/update-customer/(?P<user_id>\d+)', array(
+            'methods' => 'POST',
+            'callback' => array($this->admin, 'rest_update_customer'),
+            'permission_callback' => array($this, 'can_manage_admin')
+        ));
+        
         register_rest_route(TABESH_REST_NAMESPACE, '/files/generate-token', array(
             'methods' => 'POST',
             'callback' => array($this, 'rest_generate_file_token'),

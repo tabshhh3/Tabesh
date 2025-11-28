@@ -613,6 +613,7 @@
 
         /**
          * Handle file download
+         * Uses hidden iframe method to download without leaving the page
          */
         handleFileDownload: function(e) {
             e.preventDefault();
@@ -620,9 +621,10 @@
 
             const $btn = $(e.currentTarget);
             const fileId = $btn.data('file-id');
+            const originalText = $btn.html();
 
-            // Generate download token and redirect
-            this.showLoading('در حال آماده‌سازی دانلود...');
+            // Disable button and show loading state
+            $btn.prop('disabled', true).html('⏳ در حال دانلود...');
 
             $.ajax({
                 url: buildRestUrl(tabeshAdminData.restUrl, 'files/generate-token'),
@@ -635,16 +637,26 @@
                     file_id: fileId
                 }),
                 success: (response) => {
-                    this.hideLoading();
-
                     if (response.success && response.download_url) {
-                        window.location.href = response.download_url;
+                        // Use hidden iframe for download without leaving the page
+                        const $iframe = $('<iframe>', {
+                            style: 'display:none',
+                            src: response.download_url
+                        }).appendTo('body');
+
+                        // Cleanup iframe after download starts and re-enable button
+                        setTimeout(() => {
+                            $iframe.remove();
+                            $btn.prop('disabled', false).html(originalText);
+                            this.showToast('دانلود شروع شد', 'success');
+                        }, 2000);
                     } else {
-                        this.showToast('خطا در ایجاد لینک دانلود', 'error');
+                        $btn.prop('disabled', false).html(originalText);
+                        this.showToast(response.message || 'خطا در ایجاد لینک دانلود', 'error');
                     }
                 },
                 error: () => {
-                    this.hideLoading();
+                    $btn.prop('disabled', false).html(originalText);
                     this.showToast('خطا در برقراری ارتباط با سرور', 'error');
                 }
             });
