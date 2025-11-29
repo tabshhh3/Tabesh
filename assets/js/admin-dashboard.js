@@ -470,11 +470,11 @@
             $('.order-tab-content').removeClass('active');
             $('.order-tab-content[data-tab-content="' + tabId + '"]').addClass('active');
 
-            // Close any expanded order details
-            this.$ordersBody = $('.order-tab-content.active .orders-table tbody');
-            if (this.$ordersBody.length) {
-                this.$ordersBody.find('.order-details-row.visible').removeClass('visible');
-                this.$ordersBody.find('tr.order-row.expanded').removeClass('expanded');
+            // Close any expanded order details in the newly active tab
+            const $activeTabBody = $('.order-tab-content.active .orders-table tbody');
+            if ($activeTabBody.length) {
+                $activeTabBody.find('.order-details-row.visible').removeClass('visible');
+                $activeTabBody.find('tr.order-row.expanded').removeClass('expanded');
             }
             this.state.expandedOrderId = null;
 
