@@ -448,7 +448,14 @@
             const newStatus = $select.val();
             
             // Get source table from the expanded row or container
-            const $row = $('tr.order-row[data-order-id="' + orderId + '"]');
+            // Use $.escapeSelector if available (jQuery 3.0+), otherwise validate orderId is numeric
+            let $row = $();
+            if (typeof $.escapeSelector === 'function') {
+                $row = $('tr.order-row[data-order-id="' + $.escapeSelector(String(orderId)) + '"]');
+            } else if (/^\d+$/.test(String(orderId))) {
+                // orderId is numeric, safe to use directly
+                $row = $('tr.order-row[data-order-id="' + orderId + '"]');
+            }
             const sourceTable = $row.data('source-table') || $container.data('source-table') || 'main';
 
             if (!newStatus) {

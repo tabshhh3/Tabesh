@@ -1057,23 +1057,17 @@ class Tabesh_Order {
         
         try {
             // Insert into target table
-            if ($target_table === $table_main && $move_type === 'restore') {
-                // For restore, try to use original ID if it's not occupied
-                $existing_in_main = $wpdb->get_var($wpdb->prepare(
-                    "SELECT id FROM $table_main WHERE id = %d",
-                    $original_order_id
-                ));
-                
-                if (!$existing_in_main) {
-                    // ID is free, use it
-                    $insert_data['id'] = $original_order_id;
-                }
-            }
+            // Note: We don't try to reuse original IDs to avoid race conditions.
+            // The original_order_id is preserved in the archived/cancelled tables for reference.
             
             $result = $wpdb->insert($target_table, $insert_data);
             
             if ($result === false) {
-                throw new Exception('Failed to insert order into target table: ' . $wpdb->last_error);
+                // Log detailed error only in debug mode, throw generic exception
+                if (defined('WP_DEBUG') && WP_DEBUG) {
+                    error_log('Tabesh: Failed to insert order into target table - ' . $wpdb->last_error);
+                }
+                throw new Exception('Failed to insert order into target table');
             }
             
             $new_id = $wpdb->insert_id;
@@ -1086,7 +1080,11 @@ class Tabesh_Order {
             );
             
             if ($delete_result === false) {
-                throw new Exception('Failed to delete order from source table: ' . $wpdb->last_error);
+                // Log detailed error only in debug mode, throw generic exception
+                if (defined('WP_DEBUG') && WP_DEBUG) {
+                    error_log('Tabesh: Failed to delete order from source table - ' . $wpdb->last_error);
+                }
+                throw new Exception('Failed to delete order from source table');
             }
             
             // Commit transaction
@@ -1130,13 +1128,16 @@ class Tabesh_Order {
         }
         
         foreach ($tables_to_search as $table_type => $table_name) {
+            // Note: table_type is hardcoded ('main', 'archived', 'cancelled')
+            // and comes from our whitelist above, so it's safe to use
             $order = $wpdb->get_row($wpdb->prepare(
-                "SELECT *, %s as source_table FROM $table_name WHERE id = %d",
-                $table_type,
+                "SELECT * FROM $table_name WHERE id = %d",
                 $order_id
             ));
             
             if ($order) {
+                // Add source_table property after retrieval to avoid SQL injection concerns
+                $order->source_table = $table_type;
                 return $order;
             }
         }

@@ -209,22 +209,26 @@ if ($is_admin) {
 
         <!-- Orders Tabs Section -->
         <section class="orders-tabs-section">
+            <?php 
+            // Get base URL without tab parameter for clean tab links
+            $base_url = remove_query_arg('tab');
+            ?>
             <div class="orders-tabs-wrapper">
-                <a href="<?php echo esc_url(add_query_arg('tab', 'current', remove_query_arg('tab'))); ?>" 
+                <a href="<?php echo esc_url(add_query_arg('tab', 'current', $base_url)); ?>" 
                    class="orders-tab <?php echo $active_tab === 'current' ? 'active' : ''; ?>" 
                    data-tab="current">
                     <span class="tab-icon">📋</span>
                     <span class="tab-label"><?php esc_html_e('سفارشات جاری', 'tabesh'); ?></span>
                     <span class="tab-count" id="count-current"><?php echo esc_html($order_counts['current']); ?></span>
                 </a>
-                <a href="<?php echo esc_url(add_query_arg('tab', 'archived', remove_query_arg('tab'))); ?>" 
+                <a href="<?php echo esc_url(add_query_arg('tab', 'archived', $base_url)); ?>" 
                    class="orders-tab <?php echo $active_tab === 'archived' ? 'active' : ''; ?>" 
                    data-tab="archived">
                     <span class="tab-icon">✅</span>
                     <span class="tab-label"><?php esc_html_e('سفارشات بایگانی‌شده', 'tabesh'); ?></span>
                     <span class="tab-count" id="count-archived"><?php echo esc_html($order_counts['archived']); ?></span>
                 </a>
-                <a href="<?php echo esc_url(add_query_arg('tab', 'cancelled', remove_query_arg('tab'))); ?>" 
+                <a href="<?php echo esc_url(add_query_arg('tab', 'cancelled', $base_url)); ?>" 
                    class="orders-tab <?php echo $active_tab === 'cancelled' ? 'active' : ''; ?>" 
                    data-tab="cancelled">
                     <span class="tab-icon">❌</span>
