@@ -613,6 +613,7 @@
 
         /**
          * Handle file download
+         * Uses hidden iframe method to download without leaving the page
          */
         handleFileDownload: function(e) {
             e.preventDefault();
@@ -620,9 +621,10 @@
 
             const $btn = $(e.currentTarget);
             const fileId = $btn.data('file-id');
+            const originalText = $btn.html();
 
-            // Generate download token and redirect
-            this.showLoading('در حال آماده‌سازی دانلود...');
+            // Disable button and show loading state
+            $btn.prop('disabled', true).html('⏳ در حال دانلود...');
 
             $.ajax({
                 url: buildRestUrl(tabeshAdminData.restUrl, 'files/generate-token'),
@@ -635,16 +637,30 @@
                     file_id: fileId
                 }),
                 success: (response) => {
-                    this.hideLoading();
-
                     if (response.success && response.download_url) {
-                        window.location.href = response.download_url;
+                        // Use hidden iframe for download without leaving the page
+                        const $iframe = $('<iframe>', {
+                            style: 'display:none',
+                            src: response.download_url
+                        }).appendTo('body');
+
+                        // Cleanup iframe and re-enable button after sufficient time for download to start
+                        // The timeout is set to 3 seconds to accommodate typical server response times
+                        // for initiating the download stream. The iframe is just a trigger - 
+                        // the actual download continues in the browser's download manager.
+                        const downloadInitTimeout = 3000;
+                        setTimeout(() => {
+                            $iframe.remove();
+                            $btn.prop('disabled', false).html(originalText);
+                            this.showToast('دانلود شروع شد', 'success');
+                        }, downloadInitTimeout);
                     } else {
-                        this.showToast('خطا در ایجاد لینک دانلود', 'error');
+                        $btn.prop('disabled', false).html(originalText);
+                        this.showToast(response.message || 'خطا در ایجاد لینک دانلود', 'error');
                     }
                 },
                 error: () => {
-                    this.hideLoading();
+                    $btn.prop('disabled', false).html(originalText);
                     this.showToast('خطا در برقراری ارتباط با سرور', 'error');
                 }
             });

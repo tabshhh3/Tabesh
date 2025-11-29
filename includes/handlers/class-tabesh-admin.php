@@ -941,6 +941,121 @@ class Tabesh_Admin {
     }
 
     /**
+     * REST API: Update customer profile
+     *
+     * @param WP_REST_Request $request Request object
+     * @return WP_REST_Response Response object
+     */
+    public function rest_update_customer($request) {
+        $user_id = (int) $request->get_param('user_id');
+        $params = $request->get_json_params();
+
+        if ($user_id <= 0) {
+            return new WP_REST_Response(array(
+                'success' => false,
+                'message' => __('شناسه کاربر نامعتبر است', 'tabesh')
+            ), 400);
+        }
+
+        // Check if user exists
+        $user = get_userdata($user_id);
+        if (!$user) {
+            return new WP_REST_Response(array(
+                'success' => false,
+                'message' => __('کاربر یافت نشد', 'tabesh')
+            ), 404);
+        }
+
+        // Define allowed fields for billing and shipping
+        $billing_fields = array(
+            'billing_first_name',
+            'billing_last_name',
+            'billing_company',
+            'billing_address_1',
+            'billing_address_2',
+            'billing_city',
+            'billing_state',
+            'billing_postcode',
+            'billing_country',
+            'billing_phone'
+        );
+
+        $shipping_fields = array(
+            'shipping_first_name',
+            'shipping_last_name',
+            'shipping_company',
+            'shipping_address_1',
+            'shipping_address_2',
+            'shipping_city',
+            'shipping_state',
+            'shipping_postcode',
+            'shipping_country',
+            'shipping_phone'
+        );
+
+        $all_allowed_fields = array_merge($billing_fields, $shipping_fields);
+        $updated_fields = array();
+
+        // Fields that may contain multiple lines (addresses)
+        $textarea_fields = array(
+            'billing_address_1',
+            'billing_address_2',
+            'shipping_address_1',
+            'shipping_address_2'
+        );
+
+        // Update user meta for each provided field
+        foreach ($all_allowed_fields as $field) {
+            if (isset($params[$field])) {
+                // Use sanitize_textarea_field for address fields to preserve line breaks
+                // Use sanitize_text_field for other fields
+                if (in_array($field, $textarea_fields, true)) {
+                    $value = sanitize_textarea_field($params[$field]);
+                } else {
+                    $value = sanitize_text_field($params[$field]);
+                }
+                update_user_meta($user_id, $field, $value);
+                $updated_fields[] = $field;
+            }
+        }
+
+        if (empty($updated_fields)) {
+            return new WP_REST_Response(array(
+                'success' => false,
+                'message' => __('هیچ داده‌ای برای به‌روزرسانی ارسال نشده', 'tabesh')
+            ), 400);
+        }
+
+        // Log the update (order_id is null since this is a customer profile update, not an order update)
+        global $wpdb;
+        $logs_table = $wpdb->prefix . 'tabesh_logs';
+        $current_user = wp_get_current_user();
+        
+        $wpdb->insert(
+            $logs_table,
+            array(
+                'order_id' => null,
+                'user_id' => $user_id,
+                'staff_user_id' => get_current_user_id(),
+                'action' => 'customer_profile_edit',
+                'description' => sprintf(
+                    /* translators: 1: admin display name, 2: updated fields count */
+                    __('پروفایل مشتری توسط %1$s ویرایش شد (%2$d فیلد)', 'tabesh'),
+                    $current_user->display_name,
+                    count($updated_fields)
+                )
+            ),
+            array('%d', '%d', '%d', '%s', '%s')
+        );
+
+        return new WP_REST_Response(array(
+            'success' => true,
+            'message' => __('پروفایل مشتری با موفقیت به‌روزرسانی شد', 'tabesh'),
+            'updated_fields' => $updated_fields
+        ), 200);
+    }
+
+    /**
      * Save smart upload template settings (format field)
      *
      * @param array $format_data Format settings from POST data
