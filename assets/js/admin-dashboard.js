@@ -16,6 +16,16 @@
         return cleanBase + '/' + cleanEndpoint;
     }
 
+    // Status to tab category mapping
+    const STATUS_TAB_CATEGORY_MAP = {
+        'cancelled': 'cancelled',
+        'completed': 'archived',
+        'processing': 'processing,current',
+        'pending': 'current',
+        'confirmed': 'current',
+        'ready': 'current'
+    };
+
     // Admin Dashboard Controller
     const AdminDashboard = {
         // Configuration
@@ -670,15 +680,8 @@
             // Update data-status attribute
             $row.attr('data-status', newStatus);
 
-            // Update data-tab-category based on new status
-            let newTabCategory = 'current';
-            if (newStatus === 'cancelled') {
-                newTabCategory = 'cancelled';
-            } else if (newStatus === 'completed') {
-                newTabCategory = 'archived';
-            } else if (newStatus === 'processing') {
-                newTabCategory = 'processing,current';
-            }
+            // Update data-tab-category based on new status using the mapping constant
+            const newTabCategory = STATUS_TAB_CATEGORY_MAP[newStatus] || 'current';
             $row.data('tab-category', newTabCategory).attr('data-tab-category', newTabCategory);
 
             // Update tab counts and re-apply current tab filter
@@ -693,10 +696,11 @@
             const counts = { current: 0, processing: 0, archived: 0, cancelled: 0 };
             
             this.$ordersBody.find('tr.order-row').each(function() {
-                const categories = ($(this).data('tab-category') || '').split(',');
+                const rawCategory = $(this).data('tab-category');
+                const categories = String(rawCategory || '').split(',');
                 categories.forEach(function(cat) {
                     cat = cat.trim();
-                    if (counts.hasOwnProperty(cat)) {
+                    if (cat in counts) {
                         counts[cat]++;
                     }
                 });
