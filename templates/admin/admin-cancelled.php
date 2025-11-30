@@ -1,8 +1,8 @@
 <?php
 /**
- * Admin Archived Orders Template
+ * Admin Cancelled Orders Template
  *
- * Displays archived (delivered/completed) orders with search, filter, and reorder functionality.
+ * Displays cancelled orders with search, filter, and reorder functionality.
  *
  * @package Tabesh
  */
@@ -26,34 +26,36 @@ if (isset($_GET['action']) && $_GET['action'] === 'restore' && isset($_GET['orde
     if (check_admin_referer('restore_order_' . $order_id)) {
         global $wpdb;
         $table = $wpdb->prefix . 'tabesh_orders';
+        // Set status to pending when restoring a cancelled order
         $wpdb->update(
             $table,
             array(
                 'archived' => 0,
                 'archived_at' => null,
+                'status' => 'pending',
             ),
             array('id' => $order_id),
-            array('%d', '%s'),
+            array('%d', '%s', '%s'),
             array('%d')
         );
-        echo '<div class="notice notice-success"><p>' . esc_html__('سفارش با موفقیت بازگردانی شد.', 'tabesh') . '</p></div>';
+        echo '<div class="notice notice-success"><p>' . esc_html__('سفارش با موفقیت بازگردانی شد و به وضعیت "در انتظار بررسی" تغییر یافت.', 'tabesh') . '</p></div>';
     }
 }
 
-// Get archived orders (delivered/completed)
-$result = $archive_handler->get_archived_orders(1, 100, '');
+// Get cancelled orders
+$result = $archive_handler->get_cancelled_orders(1, 100, '');
 $orders = $result['orders'];
 ?>
 
-<div class="wrap tabesh-admin-archived" dir="rtl">
-    <h1><?php esc_html_e('سفارشات بایگانی شده (تحویل داده شده)', 'tabesh'); ?></h1>
+<div class="wrap tabesh-admin-cancelled" dir="rtl">
+    <h1><?php esc_html_e('سفارشات لغو شده', 'tabesh'); ?></h1>
     
-    <p class="description"><?php esc_html_e('لیست سفارشاتی که تحویل داده شده‌اند. می‌توانید سفارش مجدد ایجاد کنید.', 'tabesh'); ?></p>
+    <p class="description"><?php esc_html_e('لیست سفارشاتی که لغو شده‌اند. می‌توانید آنها را بازگردانی کرده یا سفارش مجدد ایجاد کنید.', 'tabesh'); ?></p>
 
     <!-- Search Form -->
     <div class="tabindex-search-box" style="margin: 15px 0;">
         <form method="get" action="">
-            <input type="hidden" name="page" value="tabesh-archived">
+            <input type="hidden" name="page" value="tabesh-cancelled">
             <input type="text" name="search" placeholder="<?php esc_attr_e('جستجو بر اساس شماره سفارش یا عنوان کتاب...', 'tabesh'); ?>" 
                    value="<?php echo isset($_GET['search']) ? esc_attr(sanitize_text_field(wp_unslash($_GET['search']))) : ''; ?>"
                    style="width: 300px; padding: 8px;">
@@ -70,9 +72,8 @@ $orders = $result['orders'];
                 <th><?php esc_html_e('قطع', 'tabesh'); ?></th>
                 <th><?php esc_html_e('تیراژ', 'tabesh'); ?></th>
                 <th><?php esc_html_e('مبلغ', 'tabesh'); ?></th>
-                <th><?php esc_html_e('وضعیت', 'tabesh'); ?></th>
                 <th><?php esc_html_e('تاریخ ثبت', 'tabesh'); ?></th>
-                <th><?php esc_html_e('تاریخ تحویل', 'tabesh'); ?></th>
+                <th><?php esc_html_e('تاریخ لغو', 'tabesh'); ?></th>
                 <th><?php esc_html_e('عملیات', 'tabesh'); ?></th>
             </tr>
         </thead>
@@ -94,31 +95,15 @@ $orders = $result['orders'];
                         <td><?php echo esc_html($order->book_size); ?></td>
                         <td><?php echo number_format($order->quantity); ?></td>
                         <td><?php echo number_format($order->total_price); ?> <?php esc_html_e('تومان', 'tabesh'); ?></td>
-                        <td>
-                            <span class="tabesh-status-badge status-<?php echo esc_attr($order->status); ?>">
-                                <?php 
-                                $labels = array(
-                                    'pending' => __('در انتظار بررسی', 'tabesh'),
-                                    'confirmed' => __('تایید شده', 'tabesh'),
-                                    'processing' => __('در حال چاپ', 'tabesh'),
-                                    'ready' => __('آماده تحویل', 'tabesh'),
-                                    'completed' => __('تحویل داده شده', 'tabesh'),
-                                    'delivered' => __('تحویل داده شده', 'tabesh'),
-                                    'cancelled' => __('لغو شده', 'tabesh'),
-                                );
-                                echo esc_html($labels[$order->status] ?? $order->status);
-                                ?>
-                            </span>
-                        </td>
                         <td><?php echo esc_html(date_i18n('Y/m/d', strtotime($order->created_at))); ?></td>
                         <td><?php echo $order->archived_at ? esc_html(date_i18n('Y/m/d', strtotime($order->archived_at))) : '—'; ?></td>
                         <td>
-                            <a href="<?php echo esc_url(wp_nonce_url(admin_url('admin.php?page=tabesh-archived&action=restore&order_id=' . $order->id), 'restore_order_' . $order->id)); ?>" 
-                               class="button button-small button-secondary"
-                               onclick="return confirm('<?php esc_attr_e('آیا از بازگردانی این سفارش اطمینان دارید؟', 'tabesh'); ?>');">
+                            <a href="<?php echo esc_url(wp_nonce_url(admin_url('admin.php?page=tabesh-cancelled&action=restore&order_id=' . $order->id), 'restore_order_' . $order->id)); ?>" 
+                               class="button button-small button-primary"
+                               onclick="return confirm('<?php esc_attr_e('آیا از بازگردانی این سفارش اطمینان دارید؟ وضعیت سفارش به "در انتظار بررسی" تغییر خواهد کرد.', 'tabesh'); ?>');">
                                 <?php esc_html_e('بازگردانی', 'tabesh'); ?>
                             </a>
-                            <button type="button" class="button button-small button-primary tabesh-reorder-btn" 
+                            <button type="button" class="button button-small tabesh-reorder-btn" 
                                     data-order-id="<?php echo esc_attr($order->id); ?>"
                                     data-order-number="<?php echo esc_attr($order->order_number); ?>"
                                     data-book-title="<?php echo esc_attr($order->book_title); ?>">
@@ -129,7 +114,7 @@ $orders = $result['orders'];
                 <?php endforeach; ?>
             <?php else: ?>
                 <tr>
-                    <td colspan="10" style="text-align: center;"><?php esc_html_e('هیچ سفارش بایگانی شده‌ای یافت نشد', 'tabesh'); ?></td>
+                    <td colspan="9" style="text-align: center;"><?php esc_html_e('هیچ سفارش لغو شده‌ای یافت نشد', 'tabesh'); ?></td>
                 </tr>
             <?php endif; ?>
         </tbody>
@@ -235,9 +220,9 @@ $orders = $result['orders'];
         font-size: 12px;
         font-weight: 500;
     }
-    .status-completed, .status-delivered {
-        background: #dcfce7;
-        color: #16a34a;
+    .status-cancelled {
+        background: #fee2e2;
+        color: #dc2626;
     }
 </style>
 
