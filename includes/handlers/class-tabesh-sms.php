@@ -186,8 +186,13 @@ class Tabesh_SMS {
             $body['args'] = array_values($parameters);
         }
 
+        // Build API URL - MelliPayamak shared endpoint uses bodyId in path
+        // Sanitize pattern_code to ensure it's numeric
+        $sanitized_pattern = absint($pattern_code);
+        $api_url = self::API_BASE_URL . $sanitized_pattern;
+
         // Send API request using WordPress HTTP API
-        $response = wp_remote_post(self::API_BASE_URL . $pattern_code, array(
+        $response = wp_remote_post($api_url, array(
             'body'    => wp_json_encode($body),
             'headers' => array(
                 'Content-Type' => 'application/json',
@@ -369,15 +374,20 @@ class Tabesh_SMS {
         global $wpdb;
         $table = $wpdb->prefix . 'tabesh_logs';
 
+        // Handle order_id - use 0 if not provided (NULL causes issues with %d format)
+        $order_id = isset($context['order_id']) && $context['order_id'] > 0 
+            ? intval($context['order_id']) 
+            : 0;
+
         $wpdb->insert(
             $table,
             array(
-                'order_id'    => isset($context['order_id']) ? intval($context['order_id']) : null,
+                'order_id'    => $order_id > 0 ? $order_id : null,
                 'user_id'     => get_current_user_id(),
-                'action'      => 'sms_error_' . $code,
-                'description' => $message,
+                'action'      => 'sms_error_' . sanitize_key($code),
+                'description' => sanitize_text_field($message),
             ),
-            array('%d', '%d', '%s', '%s')
+            $order_id > 0 ? array('%d', '%d', '%s', '%s') : array(null, '%d', '%s', '%s')
         );
     }
 

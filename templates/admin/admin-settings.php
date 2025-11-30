@@ -831,6 +831,21 @@ $admin = $tabesh->admin;
 
 <script type="text/javascript">
 jQuery(document).ready(function($) {
+    // Configuration passed from PHP
+    var tabeshAdminConfig = {
+        smsTestUrl: <?php echo wp_json_encode(esc_url_raw(rest_url(TABESH_REST_NAMESPACE . '/sms/test'))); ?>,
+        usersSearchUrl: <?php echo wp_json_encode(esc_url_raw(rest_url(TABESH_REST_NAMESPACE . '/users/search'))); ?>,
+        nonce: <?php echo wp_json_encode(wp_create_nonce('wp_rest')); ?>
+    };
+    
+    // Helper function to escape HTML to prevent XSS
+    function escapeHtml(text) {
+        if (!text) return '';
+        var div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+    
     // Test SMS functionality
     $('#test_sms_btn').on('click', function() {
         var phone = $('#test_sms_phone').val().trim();
@@ -847,7 +862,7 @@ jQuery(document).ready(function($) {
         $result.html('<span style="color: #666;">در حال ارسال...</span>');
         
         $.ajax({
-            url: '<?php echo esc_url(rest_url(TABESH_REST_NAMESPACE . '/sms/test')); ?>',
+            url: tabeshAdminConfig.smsTestUrl,
             method: 'POST',
             data: JSON.stringify({
                 phone: phone,
@@ -855,7 +870,7 @@ jQuery(document).ready(function($) {
             }),
             contentType: 'application/json',
             headers: {
-                'X-WP-Nonce': '<?php echo wp_create_nonce('wp_rest'); ?>'
+                'X-WP-Nonce': tabeshAdminConfig.nonce
             },
             success: function(response) {
                 if (response.success) {
@@ -890,11 +905,11 @@ jQuery(document).ready(function($) {
         $results.html('<p style="color: #666;">در حال جستجو...</p>');
         
         $.ajax({
-            url: '<?php echo esc_url(rest_url(TABESH_REST_NAMESPACE . '/users/search')); ?>',
+            url: tabeshAdminConfig.usersSearchUrl,
             method: 'GET',
             data: { search: search },
             headers: {
-                'X-WP-Nonce': '<?php echo wp_create_nonce('wp_rest'); ?>'
+                'X-WP-Nonce': tabeshAdminConfig.nonce
             },
             success: function(response) {
                 if (response.success && response.users.length > 0) {
@@ -902,11 +917,11 @@ jQuery(document).ready(function($) {
                     response.users.forEach(function(user) {
                         var isAdded = allowedUsers.indexOf(user.id) !== -1;
                         html += '<li style="padding: 8px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;">';
-                        html += '<span><strong>' + user.display_name + '</strong> (' + user.user_email + ')</span>';
+                        html += '<span><strong>' + escapeHtml(user.display_name) + '</strong> (' + escapeHtml(user.user_email) + ')</span>';
                         if (isAdded) {
                             html += '<span style="color: green;">✓ افزوده شده</span>';
                         } else {
-                            html += '<button type="button" class="button button-small staff-add-user" data-user-id="' + user.id + '" data-user-name="' + user.display_name + '" data-user-email="' + user.user_email + '">افزودن</button>';
+                            html += '<button type="button" class="button button-small staff-add-user" data-user-id="' + user.id + '" data-user-name="' + escapeHtml(user.display_name) + '" data-user-email="' + escapeHtml(user.user_email) + '">افزودن</button>';
                         }
                         html += '</li>';
                     });
@@ -918,7 +933,7 @@ jQuery(document).ready(function($) {
             },
             error: function(xhr) {
                 var msg = xhr.responseJSON && xhr.responseJSON.message ? xhr.responseJSON.message : 'خطا در جستجو';
-                $results.html('<p style="color: red;">' + msg + '</p>');
+                $results.html('<p style="color: red;">' + escapeHtml(msg) + '</p>');
             }
         });
     });
@@ -984,8 +999,8 @@ jQuery(document).ready(function($) {
         
         var rowHtml = '<tr data-user-id="' + userId + '">' +
             '<td>' + userId + '</td>' +
-            '<td>' + userName + '</td>' +
-            '<td>' + userEmail + '</td>' +
+            '<td>' + escapeHtml(userName) + '</td>' +
+            '<td>' + escapeHtml(userEmail) + '</td>' +
             '<td><button type="button" class="button button-small staff-remove-user" data-user-id="' + userId + '">' +
             '<span class="dashicons dashicons-trash" style="vertical-align: middle;"></span> حذف</button></td>' +
             '</tr>';
