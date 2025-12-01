@@ -752,8 +752,9 @@
             $('#orders-search-results').hide();
         });
 
-        // Click on order card to show details (not upload order cards)
-        $(document).on('click', '.order-card:not(.upload-order-card)', function(e) {
+        // Click on order card to show details (scoped to orders container)
+        // Using event delegation on #user-orders-content to reduce scope
+        $('#user-orders-content').on('click', '.order-card:not(.upload-order-card)', function(e) {
             // If clicking on buttons, do not trigger card click
             if (!$(e.target).closest('.btn, button, a').length) {
                 const orderId = $(this).data('order-id');
@@ -763,15 +764,15 @@
             }
         });
 
-        // Details button
-        $(document).on('click', '.btn-details', function(e) {
+        // Details button (scoped to user orders content)
+        $('#user-orders-content').on('click', '.btn-details', function(e) {
             e.stopPropagation();
             const orderId = $(this).data('order-id');
             showOrderDetails(orderId);
         });
 
-        // Support button
-        $(document).on('click', '.btn-support', function(e) {
+        // Support button (scoped to user orders content)
+        $('#user-orders-content').on('click', '.btn-support', function(e) {
             e.stopPropagation();
             const orderNumber = $(this).data('order-number');
             const bookTitle = $(this).data('book-title');
@@ -871,42 +872,59 @@
 
     /**
      * Extract Order Data from Card (Fallback)
+     * Note: This fallback extracts basic data from DOM when API fails
      */
     function extractOrderDataFromCard($card) {
-        const orderNumber = $card.find('.order-number').text().replace('#', '').trim();
-        const bookTitle = $card.find('.order-book-title').text().replace('📖', '').trim();
+        // Extract order number - remove # prefix
+        const orderNumberText = $card.find('.order-number').text();
+        const orderNumber = orderNumberText.replace(/^#/, '').trim();
+        
+        // Extract book title - remove emoji and clean up
+        const bookTitleText = $card.find('.order-book-title').text();
+        const bookTitle = bookTitleText.replace(/^[\s\uD83D\uDCD6\u{1F4D6}]*/, '').trim();
+        
+        // Extract status label
         const statusLabel = $card.find('.order-status').text().trim();
         
-        // Extract quick info items
-        const quickInfo = {};
-        $card.find('.info-item .info-text').each(function() {
-            const text = $(this).text().trim();
-            if (text.includes('صفحه')) {
+        // Extract quick info items by examining each info-item
+        const quickInfo = {
+            page_count: null,
+            quantity: null,
+            total_price: null,
+            book_size: null
+        };
+        
+        $card.find('.info-item').each(function(index) {
+            const text = $(this).find('.info-text').text().trim();
+            // Use index-based extraction as fallback (order: pages, copies, size, price)
+            if (index === 0 || text.includes('صفحه')) {
                 quickInfo.page_count = text;
-            } else if (text.includes('نسخه')) {
+            } else if (index === 1 || text.includes('نسخه')) {
                 quickInfo.quantity = text;
-            } else if (text.includes('تومان')) {
+            } else if (index === 3 || text.includes('تومان')) {
                 quickInfo.total_price = text;
-            } else {
+            } else if (index === 2) {
                 quickInfo.book_size = text;
             }
         });
         
-        const orderDate = $card.find('.order-date').text().replace('📅', '').trim();
+        // Extract order date
+        const orderDateText = $card.find('.order-date').text();
+        const orderDate = orderDateText.replace(/^[\s\uD83D\uDCC5\u{1F4C5}]*/, '').trim();
         
         return {
             order_number: orderNumber,
             book_title: bookTitle,
             status_label: statusLabel,
-            page_count_total: quickInfo.page_count || '',
-            page_count_bw: 0,
-            page_count_color: 0,
-            quantity: quickInfo.quantity || '',
-            book_size: quickInfo.book_size || '',
-            total_price: quickInfo.total_price || '',
+            page_count_total: quickInfo.page_count || 'نامشخص',
+            page_count_bw: null,
+            page_count_color: null,
+            quantity: quickInfo.quantity || 'نامشخص',
+            book_size: quickInfo.book_size || 'نامشخص',
+            total_price: quickInfo.total_price || 'نامشخص',
             created_at: orderDate,
             paper_type: 'نامشخص',
-            paper_weight: '',
+            paper_weight: null,
             print_type: 'نامشخص',
             binding_type: 'نامشخص',
             lamination_type: 'نامشخص',
