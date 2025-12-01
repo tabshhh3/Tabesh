@@ -191,13 +191,6 @@ final class Tabesh {
     public $sms;
 
     /**
-     * Dashboard handler
-     *
-     * @var Tabesh_Dashboard
-     */
-    public $dashboard;
-
-    /**
      * Cache for settings to avoid redundant database queries
      *
      * @var array
@@ -264,8 +257,6 @@ final class Tabesh {
         $this->archive = new Tabesh_Archive();
         // Initialize SMS handler
         $this->sms = new Tabesh_SMS();
-        // Initialize dashboard handler
-        $this->dashboard = new Tabesh_Dashboard();
 
         // Register REST API routes
         add_action('rest_api_init', array($this, 'register_rest_routes'));
@@ -1504,7 +1495,6 @@ final class Tabesh {
         add_shortcode('tabesh_admin_dashboard', array($this->admin, 'render_admin_dashboard'));
         add_shortcode('tabesh_file_upload', array($this, 'render_file_upload'));
         add_shortcode('tabesh_upload_manager', array($this->upload, 'render_upload_manager'));
-        add_shortcode('tabesh_user_dashboard', array($this->dashboard, 'render_dashboard'));
     }
 
     /**
