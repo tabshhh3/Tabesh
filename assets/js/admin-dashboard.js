@@ -613,7 +613,8 @@
 
         /**
          * Handle file download
-         * Improved method with better CORS handling and fallback strategies
+         * Uses simple window.open approach to avoid CDN/firewall CORS issues
+         * This method matches the working customer download implementation
          */
         handleFileDownload: function(e) {
             e.preventDefault();
@@ -626,6 +627,7 @@
             // Disable button and show loading state
             $btn.prop('disabled', true).html('⏳ در حال دانلود...');
 
+            // Generate download token via REST API
             $.ajax({
                 url: buildRestUrl(tabeshAdminData.restUrl, 'files/generate-token'),
                 method: 'POST',
@@ -637,104 +639,21 @@
                     file_id: fileId
                 }),
                 success: (response) => {
+                    // Re-enable button
+                    $btn.prop('disabled', false).html(originalText);
+
                     if (response.success && response.download_url) {
-                        // Try fetch with Blob first (better for CORS and CDN issues)
-                        fetch(response.download_url, {
-                            method: 'GET',
-                            credentials: 'same-origin',
-                            mode: 'cors'
-                        })
-                            .then(fetchResponse => {
-                                if (!fetchResponse.ok) {
-                                    throw new Error('خطا در دانلود فایل');
-                                }
-                                
-                                // Extract filename from Content-Disposition header
-                                const contentDisposition = fetchResponse.headers.get('Content-Disposition');
-                                let filename = 'tabesh-download';
-                                
-                                if (contentDisposition) {
-                                    // Try RFC 5987 encoded filename* first (e.g., filename*=UTF-8''encoded-name)
-                                    const filenameStarMatch = contentDisposition.match(/filename\*=UTF-8''([^;,\n]*)/i);
-                                    if (filenameStarMatch && filenameStarMatch[1]) {
-                                        filename = decodeURIComponent(filenameStarMatch[1]);
-                                    } else {
-                                        // Fallback to regular filename parameter
-                                        const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
-                                        if (filenameMatch && filenameMatch[1]) {
-                                            filename = filenameMatch[1].replace(/['"]/g, '');
-                                        }
-                                    }
-                                }
-                                
-                                // If no filename from header, try URL parameters
-                                if (filename === 'tabesh-download') {
-                                    const urlParams = new URLSearchParams(new URL(response.download_url).search);
-                                    const fileIdParam = urlParams.get('file_id');
-                                    if (fileIdParam) {
-                                        filename = `tabesh-file-${fileIdParam}`;
-                                    }
-                                }
-                                
-                                return fetchResponse.blob().then(blob => ({ blob, filename }));
-                            })
-                            .then(({ blob, filename }) => {
-                                // Create a temporary URL for the blob
-                                const blobUrl = window.URL.createObjectURL(blob);
-                                
-                                // Create a temporary anchor element and trigger download
-                                const a = document.createElement('a');
-                                a.style.display = 'none';
-                                a.href = blobUrl;
-                                a.download = filename;
-                                
-                                document.body.appendChild(a);
-                                a.click();
-                                
-                                // Clean up
-                                setTimeout(() => {
-                                    window.URL.revokeObjectURL(blobUrl);
-                                    document.body.removeChild(a);
-                                }, 100);
-                                
-                                // Re-enable button and show success
-                                $btn.prop('disabled', false).html(originalText);
-                                this.showToast('دانلود شروع شد', 'success');
-                            })
-                            .catch(error => {
-                                console.error('Fetch download error:', error);
-                                
-                                // Fallback 1: Try using hidden iframe (works better with some CDNs)
-                                try {
-                                    const iframe = document.createElement('iframe');
-                                    iframe.style.display = 'none';
-                                    iframe.src = response.download_url;
-                                    document.body.appendChild(iframe);
-                                    
-                                    // Clean up iframe after 2 seconds (sufficient for download to start)
-                                    setTimeout(() => {
-                                        document.body.removeChild(iframe);
-                                    }, 2000);
-                                    
-                                    $btn.prop('disabled', false).html(originalText);
-                                    this.showToast('دانلود شروع شد', 'success');
-                                } catch (iframeError) {
-                                    console.error('Iframe fallback error:', iframeError);
-                                    
-                                    // Fallback 2: Simple window.open as last resort
-                                    window.open(response.download_url, '_blank');
-                                    
-                                    $btn.prop('disabled', false).html(originalText);
-                                    this.showToast('دانلود شروع شد', 'success');
-                                }
-                            });
+                        // Use simple window.open approach - this avoids CORS preflight requests
+                        // that can be blocked by CDN/firewall (like what customers use successfully)
+                        window.open(response.download_url, '_blank');
+                        this.showToast('دانلود شروع شد', 'success');
                     } else {
-                        $btn.prop('disabled', false).html(originalText);
                         this.showToast(response.message || 'خطا در ایجاد لینک دانلود', 'error');
                     }
                 },
-                error: () => {
+                error: (xhr) => {
                     $btn.prop('disabled', false).html(originalText);
+                    console.error('Download token generation error:', xhr);
                     this.showToast('خطا در برقراری ارتباط با سرور', 'error');
                 }
             });

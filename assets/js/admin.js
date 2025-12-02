@@ -424,6 +424,11 @@
             new TabeshSettingsTabs();
         }
 
+        // Initialize SMS pattern validation
+        if ($('.sms-pattern-input').length) {
+            TabeshAdmin.initSMSPatternValidation();
+        }
+
         // Initialize orders manager
         if ($('.tabesh-admin-orders').length || $('.tabesh-staff-panel').length) {
             new TabeshOrdersManager();
@@ -819,6 +824,52 @@
                 }
             });
         }
+    },
+
+    /**
+     * Initialize SMS pattern validation
+     */
+    initSMSPatternValidation: function() {
+        // Add real-time validation for SMS pattern inputs
+        $('.sms-pattern-input').on('input', function() {
+            const value = $(this).val().trim();
+            const $description = $(this).siblings('.description').find('small');
+            
+            if (value === '') {
+                // Empty is ok (optional field)
+                $(this)[0].setCustomValidity('');
+                $description.css('color', '#666');
+                return;
+            }
+            
+            // Check if value is numeric
+            if (!/^\d+$/.test(value)) {
+                $(this)[0].setCustomValidity('کد الگو باید فقط شامل اعداد باشد');
+                $description.css('color', '#dc3232').text('⚠️ فقط عدد وارد کنید');
+            } else {
+                $(this)[0].setCustomValidity('');
+                $description.css('color', '#46b450').text('✓ معتبر');
+            }
+        });
+
+        // Validate on form submit
+        $('form').on('submit', function(e) {
+            let hasError = false;
+            $('.sms-pattern-input').each(function() {
+                const value = $(this).val().trim();
+                if (value !== '' && !/^\d+$/.test(value)) {
+                    hasError = true;
+                    $(this).focus();
+                    alert('لطفاً کد الگوهای پیامک را به صورت عددی وارد کنید');
+                    return false;
+                }
+            });
+            
+            if (hasError) {
+                e.preventDefault();
+                return false;
+            }
+        });
     }
 
 })(jQuery);

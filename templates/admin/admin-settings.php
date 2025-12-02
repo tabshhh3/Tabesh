@@ -555,25 +555,37 @@ $admin = $tabesh->admin;
 
             <!-- SMS Settings -->
             <div id="tab-sms" class="tabesh-tab-content">
-                <h2>تنظیمات پیامک (سامانه ملی پیامک - ارسال الگومحور)</h2>
+                <h2>تنظیمات پیامک (ملی پیامک - ارسال الگومحور)</h2>
 
                 <div class="notice notice-info">
                     <p>
-                        <strong>📱 راهنما:</strong> این بخش از API الگومحور (Template-based) سامانه ملی پیامک استفاده می‌کند.
+                        <strong>📱 درباره سرویس:</strong> این بخش از متد <code>SendByBaseNumber2</code> در API الگومحور (Pattern/Template) ملی‌پیامک استفاده می‌کند.
                     </p>
                     <p>
                         <strong>🔑 مراحل تنظیم:</strong>
                     </p>
                     <ol style="margin-right: 20px;">
-                        <li>ابتدا در پنل ملی‌پیامک، الگوهای پیامک خود را تعریف کنید</li>
-                        <li>کد الگو (bodyId) هر الگو را از پنل ملی‌پیامک کپی کنید</li>
-                        <li>در اینجا نام کاربری و رمز عبور را وارد کنید</li>
+                        <li>در پنل ملی‌پیامک (<a href="https://panel.melipayamak.com" target="_blank">panel.melipayamak.com</a>)، الگوهای پیامک خود را تعریف کنید</li>
+                        <li>کد عددی الگو (bodyId) را از پنل کپی کنید - <strong>توجه:</strong> کد الگو باید عدد خالص باشد (مثال: 12345)</li>
+                        <li>نام کاربری و رمز عبور پنل را در اینجا وارد کنید</li>
                         <li>برای هر وضعیت سفارش، کد الگوی مربوطه را وارد کنید</li>
+                        <li>با دکمه "بررسی اتصال" صحت تنظیمات را بررسی کنید</li>
                     </ol>
                     <p>
-                        <strong>📌 متغیرهای قابل استفاده در الگو:</strong>
-                        <code>شماره سفارش</code>، <code>نام مشتری</code>، <code>وضعیت</code>، <code>تاریخ</code>
+                        <strong>📌 متغیرهای الگو (به ترتیب ارسال):</strong><br>
+                        1️⃣ <code>order_number</code> - شماره سفارش (مثال: TB-00001)<br>
+                        2️⃣ <code>customer_name</code> - نام مشتری<br>
+                        3️⃣ <code>status</code> - وضعیت سفارش به فارسی<br>
+                        4️⃣ <code>date</code> - تاریخ (فرمت: 1402/12/15)
                     </p>
+                    <p>
+                        <strong>⚠️ نکات مهم:</strong>
+                    </p>
+                    <ul style="margin-right: 20px;">
+                        <li>کد الگو (bodyId) باید عدد صحیح باشد، نه متن</li>
+                        <li>ترتیب متغیرها در الگوی ملی‌پیامک مهم است و باید با ترتیب بالا مطابقت داشته باشد</li>
+                        <li>برای مشاهده مستندات کامل API: <a href="https://github.com/melipayamak" target="_blank">github.com/melipayamak</a></li>
+                    </ul>
                 </div>
 
                 <h3>تنظیمات اتصال به سامانه ملی پیامک</h3>
@@ -654,9 +666,14 @@ $admin = $tabesh->admin;
                                        id="sms_status_<?php echo esc_attr($status); ?>_pattern" 
                                        name="sms_status_<?php echo esc_attr($status); ?>_pattern" 
                                        value="<?php echo esc_attr($admin->get_setting('sms_status_' . $status . '_pattern')); ?>" 
-                                       class="regular-text" 
+                                       class="regular-text sms-pattern-input" 
                                        dir="ltr"
-                                       placeholder="مثال: 12345">
+                                       pattern="[0-9]+"
+                                       title="کد الگو باید فقط شامل اعداد باشد"
+                                       placeholder="مثال: 12345 (فقط عدد)">
+                                <p class="description" style="margin-top: 5px; color: #666;">
+                                    <small>⚠️ فقط عدد وارد کنید، نه حروف یا کاراکترهای دیگر</small>
+                                </p>
                             </td>
                         </tr>
                         <?php endforeach; ?>
@@ -674,7 +691,11 @@ $admin = $tabesh->admin;
                     <tr>
                         <th><label for="test_sms_pattern">کد الگوی تست</label></th>
                         <td>
-                            <input type="text" id="test_sms_pattern" class="regular-text" dir="ltr" placeholder="12345">
+                            <input type="text" id="test_sms_pattern" class="regular-text sms-pattern-input" dir="ltr" 
+                                   pattern="[0-9]+" 
+                                   title="کد الگو باید فقط شامل اعداد باشد"
+                                   placeholder="12345 (فقط عدد)">
+                            <p class="description">کد الگویی که در بالا تعریف کرده‌اید را وارد کنید</p>
                         </td>
                     </tr>
                     <tr>
