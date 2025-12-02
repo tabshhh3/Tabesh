@@ -1136,17 +1136,40 @@ final class Tabesh {
     /**
      * Check if user can manage orders
      * Staff with edit_shop_orders capability and admins can manage orders
+     * Also checks staff allowed users list for enhanced security
      */
     public function can_manage_orders() {
-        return current_user_can('manage_woocommerce') || current_user_can('edit_shop_orders');
+        // Admins and shop managers always have access
+        if (current_user_can('manage_woocommerce') || current_user_can('edit_shop_orders')) {
+            return true;
+        }
+        
+        // Check if user is in the staff allowed list (using secure method)
+        $user_id = get_current_user_id();
+        if ($user_id && isset($this->staff)) {
+            return $this->staff->user_has_staff_access_secure($user_id);
+        }
+        
+        return false;
     }
 
     /**
      * Check if user can access admin dashboard
-     * Only users with manage_woocommerce capability (full admin access)
+     * Checks both capability and allowed users list for enhanced security
      */
     public function can_manage_admin() {
-        return current_user_can('manage_woocommerce');
+        // Admins always have access
+        if (current_user_can('manage_woocommerce')) {
+            return true;
+        }
+        
+        // Check if user is in the allowed list (using secure method)
+        $user_id = get_current_user_id();
+        if ($user_id && isset($this->admin)) {
+            return $this->admin->user_has_admin_dashboard_access($user_id);
+        }
+        
+        return false;
     }
 
     /**

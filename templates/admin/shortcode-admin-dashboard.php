@@ -17,21 +17,42 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-// Check user capabilities
-$is_admin = current_user_can('manage_woocommerce');
+// SECURITY: Check access using secure method that bypasses cache
+$admin = Tabesh()->admin;
+$current_user_id = get_current_user_id();
+$is_admin = $admin->user_has_admin_dashboard_access($current_user_id);
 
-// If not admin, check if user is in allowed list
+// Log unauthorized access attempts
 if (!$is_admin) {
-    $allowed_users = Tabesh()->get_setting('admin_dashboard_allowed_users', array());
-    if (is_string($allowed_users)) {
-        $allowed_users = json_decode($allowed_users, true) ?: array();
+    // Log the security event
+    if (defined('WP_DEBUG') && WP_DEBUG) {
+        error_log(sprintf(
+            'Tabesh Security: Unauthorized access attempt to admin dashboard by user ID %d',
+            $current_user_id
+        ));
     }
-    $is_admin = in_array(get_current_user_id(), $allowed_users);
+    
+    // Log to database for security audit
+    global $wpdb;
+    $logs_table = $wpdb->prefix . 'tabesh_logs';
+    $result = $wpdb->insert(
+        $logs_table,
+        array(
+            'user_id' => $current_user_id,
+            'action' => 'unauthorized_access_attempt',
+            'description' => 'Attempted to access admin dashboard without permission'
+        ),
+        array('%d', '%s', '%s')
+    );
+    
+    // Log database errors
+    if ($result === false && defined('WP_DEBUG') && WP_DEBUG) {
+        error_log('Tabesh Security: Failed to log unauthorized access attempt - ' . $wpdb->last_error);
+    }
 }
 
 if ($is_admin) {
     // Admin view: Show full super dashboard
-    $admin = Tabesh()->admin;
     $stats = $admin->get_statistics();
     $all_orders = $admin->get_orders('', false);
     $current_user = wp_get_current_user();

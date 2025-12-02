@@ -613,7 +613,7 @@
 
         /**
          * Handle file download
-         * Uses hidden iframe method to download without leaving the page
+         * Opens download in new window/tab for better browser compatibility
          */
         handleFileDownload: function(e) {
             e.preventDefault();
@@ -638,22 +638,14 @@
                 }),
                 success: (response) => {
                     if (response.success && response.download_url) {
-                        // Use hidden iframe for download without leaving the page
-                        const $iframe = $('<iframe>', {
-                            style: 'display:none',
-                            src: response.download_url
-                        }).appendTo('body');
-
-                        // Cleanup iframe and re-enable button after sufficient time for download to start
-                        // The timeout is set to 3 seconds to accommodate typical server response times
-                        // for initiating the download stream. The iframe is just a trigger - 
-                        // the actual download continues in the browser's download manager.
-                        const downloadInitTimeout = 3000;
+                        // Open download URL in new tab/window - more reliable than iframe
+                        window.open(response.download_url, '_blank');
+                        
+                        // Re-enable button after short delay
                         setTimeout(() => {
-                            $iframe.remove();
                             $btn.prop('disabled', false).html(originalText);
                             this.showToast('دانلود شروع شد', 'success');
-                        }, downloadInitTimeout);
+                        }, 500);
                     } else {
                         $btn.prop('disabled', false).html(originalText);
                         this.showToast(response.message || 'خطا در ایجاد لینک دانلود', 'error');

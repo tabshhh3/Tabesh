@@ -11,13 +11,38 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-// Check if user is allowed to access staff panel
-$staff_allowed_users = Tabesh()->get_setting('staff_allowed_users', array());
-if (is_string($staff_allowed_users)) {
-    $staff_allowed_users = json_decode($staff_allowed_users, true) ?: array();
-}
+// SECURITY: Check access using secure method that bypasses cache
+$staff = Tabesh()->staff;
+$current_user_id = get_current_user_id();
+$has_access = $staff->user_has_staff_access_secure($current_user_id);
 
-if (!current_user_can('manage_woocommerce') && !current_user_can('edit_shop_orders') && !in_array(get_current_user_id(), $staff_allowed_users)) {
+if (!$has_access) {
+    // Log unauthorized access attempts
+    if (defined('WP_DEBUG') && WP_DEBUG) {
+        error_log(sprintf(
+            'Tabesh Security: Unauthorized access attempt to staff panel by user ID %d',
+            $current_user_id
+        ));
+    }
+    
+    // Log to database for security audit
+    global $wpdb;
+    $logs_table = $wpdb->prefix . 'tabesh_logs';
+    $result = $wpdb->insert(
+        $logs_table,
+        array(
+            'user_id' => $current_user_id,
+            'action' => 'unauthorized_access_attempt',
+            'description' => 'Attempted to access staff panel without permission'
+        ),
+        array('%d', '%s', '%s')
+    );
+    
+    // Log database errors
+    if ($result === false && defined('WP_DEBUG') && WP_DEBUG) {
+        error_log('Tabesh Security: Failed to log unauthorized access attempt - ' . $wpdb->last_error);
+    }
+    
     echo '<div class="tabesh-notice error" style="padding: 20px; background: #f8d7da; border: 1px solid #f5c6cb; border-radius: 5px; color: #721c24; margin: 20px 0;">';
     echo '<p style="margin: 0;"><strong>' . esc_html__('دسترسی غیرمجاز', 'tabesh') . '</strong></p>';
     echo '<p style="margin: 10px 0 0 0;">' . esc_html__('شما دسترسی به این بخش را ندارید.', 'tabesh') . '</p>';
@@ -25,7 +50,6 @@ if (!current_user_can('manage_woocommerce') && !current_user_can('edit_shop_orde
     return;
 }
 
-$staff = Tabesh()->staff;
 $orders = $staff->get_assigned_orders();
 $current_user = wp_get_current_user();
 $avatar_url = get_avatar_url($current_user->ID);
