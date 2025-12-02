@@ -193,8 +193,8 @@ class Tabesh_SMS {
                 'trace' => true,
                 'exceptions' => true,
                 'connection_timeout' => 30,
-                // Enable WSDL caching for production (better performance)
-                // Disable only when WP_DEBUG is true for easier troubleshooting
+                // WSDL caching: Use WSDL_CACHE_BOTH in production for better performance
+                // Use WSDL_CACHE_NONE only in debug mode (WP_DEBUG=true) for troubleshooting
                 'cache_wsdl' => (defined('WP_DEBUG') && WP_DEBUG) ? WSDL_CACHE_NONE : WSDL_CACHE_BOTH,
             );
 
@@ -422,6 +422,8 @@ class Tabesh_SMS {
         $table = $wpdb->prefix . 'tabesh_logs';
 
         // Handle order_id - use NULL if not provided
+        // Note: WordPress wpdb handles NULL values correctly even with %d format
+        // It will insert NULL into the database when value is null
         $order_id = isset($context['order_id']) && $context['order_id'] > 0 
             ? intval($context['order_id']) 
             : null;
