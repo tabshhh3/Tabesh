@@ -852,21 +852,52 @@
             }
         });
 
-        // Validate on form submit
-        $('form').on('submit', function(e) {
+        // Validate on form submit - only for forms containing SMS pattern inputs
+        $('form:has(.sms-pattern-input)').on('submit', function(e) {
             let hasError = false;
-            $('.sms-pattern-input').each(function() {
+            let $firstErrorInput = null;
+            
+            $(this).find('.sms-pattern-input').each(function() {
                 const value = $(this).val().trim();
                 if (value !== '' && !/^\d+$/.test(value)) {
                     hasError = true;
-                    $(this).focus();
-                    alert('لطفاً کد الگوهای پیامک را به صورت عددی وارد کنید');
-                    return false;
+                    if (!$firstErrorInput) {
+                        $firstErrorInput = $(this);
+                    }
                 }
             });
             
             if (hasError) {
                 e.preventDefault();
+                
+                // Focus on first error input
+                if ($firstErrorInput) {
+                    $firstErrorInput.focus();
+                }
+                
+                // Show user-friendly notification using WordPress admin notice style
+                const $notice = $('<div>')
+                    .addClass('notice notice-error is-dismissible')
+                    .html('<p><strong>خطا:</strong> لطفاً کد الگوهای پیامک را به صورت عددی وارد کنید (فقط اعداد مجاز هستند).</p>')
+                    .prependTo('.wrap');
+                
+                // Make dismissible
+                $notice.append('<button type="button" class="notice-dismiss"><span class="screen-reader-text">بستن این پیام</span></button>');
+                
+                // Handle dismiss button
+                $notice.find('.notice-dismiss').on('click', function() {
+                    $notice.fadeOut(function() {
+                        $notice.remove();
+                    });
+                });
+                
+                // Auto-remove after 5 seconds
+                setTimeout(function() {
+                    $notice.fadeOut(function() {
+                        $notice.remove();
+                    });
+                }, 5000);
+                
                 return false;
             }
         });
