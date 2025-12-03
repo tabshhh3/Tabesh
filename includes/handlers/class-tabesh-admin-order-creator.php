@@ -51,10 +51,16 @@ class Tabesh_Admin_Order_Creator {
             true
         );
 
+        // Get settings for frontend
+        $paper_types = Tabesh()->get_setting('paper_types', array());
+        
         // Localize script with necessary data
         wp_localize_script('tabesh-admin-order-creator', 'tabeshAdminOrderCreator', array(
             'restUrl' => rest_url(TABESH_REST_NAMESPACE),
             'nonce' => wp_create_nonce('wp_rest'),
+            'settings' => array(
+                'paperTypes' => $paper_types
+            ),
             'strings' => array(
                 'selectUser' => __('انتخاب کاربر', 'tabesh'),
                 'createNewUser' => __('ایجاد کاربر جدید', 'tabesh'),

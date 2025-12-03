@@ -311,8 +311,10 @@
         
         $weightSelect.empty().append('<option value="">انتخاب کنید...</option>');
         
-        if (paperType && tabeshData.settings.paperTypes && tabeshData.settings.paperTypes[paperType]) {
-            const weights = tabeshData.settings.paperTypes[paperType];
+        if (paperType && tabeshAdminOrderCreator.settings && 
+            tabeshAdminOrderCreator.settings.paperTypes && 
+            tabeshAdminOrderCreator.settings.paperTypes[paperType]) {
+            const weights = tabeshAdminOrderCreator.settings.paperTypes[paperType];
             weights.forEach(function(weight) {
                 $weightSelect.append('<option value="' + weight + '">' + weight + '</option>');
             });
