@@ -1211,10 +1211,104 @@ class Tabesh_Admin {
     }
 
     /**
-     * Save smart upload template settings (format field)
+     * Normalize Iranian mobile number to standard format
+     * Detects and converts various Iranian mobile formats to 09xxxxxxxxx
      *
-     * @param array $format_data Format settings from POST data
+     * @param string $phone Phone number to normalize
+     * @return string|null Normalized phone number or null if invalid
      */
+    public static function normalize_iranian_mobile($phone) {
+        if (empty($phone)) {
+            return null;
+        }
+
+        // Remove all non-digit characters
+        $phone = preg_replace('/[^0-9]/', '', $phone);
+
+        // Pattern 1: 09xxxxxxxxx (11 digits) - already correct
+        if (preg_match('/^09\d{9}$/', $phone)) {
+            return $phone;
+        }
+
+        // Pattern 2: 9xxxxxxxxx (10 digits) - add leading 0
+        if (preg_match('/^9\d{9}$/', $phone)) {
+            return '0' . $phone;
+        }
+
+        // Pattern 3: 989xxxxxxxxx (12 digits with country code) - remove 98
+        if (preg_match('/^989\d{9}$/', $phone)) {
+            return '0' . substr($phone, 2);
+        }
+
+        // Pattern 4: 00989xxxxxxxxx (14 digits with 00 prefix) - remove 0098
+        if (preg_match('/^00989\d{9}$/', $phone)) {
+            return '0' . substr($phone, 4);
+        }
+
+        // Not a valid Iranian mobile number
+        return null;
+    }
+
+    /**
+     * Get customer's mobile number from username or billing data
+     * First checks if username is a mobile number, then falls back to billing_phone
+     *
+     * @param WP_User $user WordPress user object
+     * @return string Mobile number or empty string
+     */
+    public static function get_customer_mobile($user) {
+        if (!$user) {
+            return '';
+        }
+
+        // First, try to extract mobile from username
+        $username = $user->user_login;
+        $normalized = self::normalize_iranian_mobile($username);
+        
+        if ($normalized) {
+            return $normalized;
+        }
+
+        // If username is not a mobile number, check billing_phone
+        $billing_phone = get_user_meta($user->ID, 'billing_phone', true);
+        if (!empty($billing_phone)) {
+            $normalized = self::normalize_iranian_mobile($billing_phone);
+            if ($normalized) {
+                return $normalized;
+            }
+            // Return as-is if not Iranian mobile format
+            return $billing_phone;
+        }
+
+        return '';
+    }
+
+    /**
+     * Get customer's full name
+     * Returns display_name if set, otherwise combines first_name and last_name
+     *
+     * @param WP_User $user WordPress user object
+     * @return string Full name or empty string
+     */
+    public static function get_customer_full_name($user) {
+        if (!$user) {
+            return '';
+        }
+
+        // First, try display_name
+        if (!empty($user->display_name) && $user->display_name !== $user->user_login) {
+            return $user->display_name;
+        }
+
+        // Fall back to first_name + last_name
+        $first_name = get_user_meta($user->ID, 'first_name', true);
+        $last_name = get_user_meta($user->ID, 'last_name', true);
+
+        $full_name = trim($first_name . ' ' . $last_name);
+        
+        return !empty($full_name) ? $full_name : '';
+    }
+
     /**
      * Debug log helper - only logs when WP_DEBUG is enabled
      *

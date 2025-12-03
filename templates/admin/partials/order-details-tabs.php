@@ -52,6 +52,27 @@ $customer_country = $user ? get_user_meta($order->user_id, 'billing_country', tr
 $customer_company = $user ? get_user_meta($order->user_id, 'billing_company', true) : '';
 $customer_registered = $user ? date_i18n('Y/m/d', strtotime($user->user_registered)) : '';
 
+// Get enhanced customer info using helper methods
+$customer_mobile = $user ? Tabesh_Admin::get_customer_mobile($user) : '';
+$customer_full_name = $user ? Tabesh_Admin::get_customer_full_name($user) : '';
+// Build complete address from billing fields
+$customer_full_address = '';
+if ($user) {
+    $address_parts = array_filter(array(
+        $customer_address,
+        $customer_address_2,
+        $customer_city,
+        $customer_state,
+        $customer_postcode
+    ));
+    // Persian comma separator for address parts
+    $customer_full_address = implode(
+        /* translators: separator for address parts */
+        _x('، ', 'address separator', 'tabesh'),
+        $address_parts
+    );
+}
+
 // Shipping address fields
 $shipping_first_name = $user ? get_user_meta($order->user_id, 'shipping_first_name', true) : '';
 $shipping_last_name = $user ? get_user_meta($order->user_id, 'shipping_last_name', true) : '';
@@ -401,9 +422,9 @@ $status_labels = array(
     <div class="customer-profile-grid">
         <div class="customer-avatar-section">
             <img src="<?php echo esc_url(get_avatar_url($order->user_id, array('size' => 120))); ?>" 
-                 alt="<?php echo esc_attr($customer_name); ?>" 
+                 alt="<?php echo esc_attr($customer_full_name ?: $customer_name); ?>" 
                  class="customer-avatar-large">
-            <div class="customer-display-name"><?php echo esc_html($customer_name); ?></div>
+            <div class="customer-display-name"><?php echo esc_html($customer_full_name ?: $customer_name); ?></div>
             <div class="customer-since"><?php esc_html_e('عضو از:', 'tabesh'); ?> <?php echo esc_html($customer_registered); ?></div>
             
             <div class="customer-stats">
@@ -429,52 +450,73 @@ $status_labels = array(
         <div class="customer-details-section">
             <!-- Billing Information Section -->
             <h4 class="customer-section-title" style="grid-column: 1 / -1; margin-bottom: 10px; color: var(--admin-text-primary);"><?php esc_html_e('اطلاعات صورتحساب', 'tabesh'); ?></h4>
+            
+            <!-- 1. Mobile Number -->
             <div class="customer-detail-card">
-                <div class="customer-detail-label"><?php esc_html_e('شناسه کاربر', 'tabesh'); ?></div>
-                <div class="customer-detail-value">#<?php echo esc_html($order->user_id); ?></div>
+                <div class="customer-detail-label"><?php esc_html_e('شماره موبایل', 'tabesh'); ?></div>
+                <div class="customer-detail-value"><?php echo esc_html($customer_mobile ?: '—'); ?></div>
             </div>
+            
+            <!-- 2. Full Name -->
+            <?php if (!empty($customer_full_name)): ?>
+            <div class="customer-detail-card">
+                <div class="customer-detail-label"><?php esc_html_e('نام و نام خانوادگی', 'tabesh'); ?></div>
+                <div class="customer-detail-value"><?php echo esc_html($customer_full_name); ?></div>
+            </div>
+            <?php endif; ?>
+            
+            <!-- 3. Email -->
             <div class="customer-detail-card">
                 <div class="customer-detail-label"><?php esc_html_e('ایمیل', 'tabesh'); ?></div>
                 <div class="customer-detail-value"><?php echo esc_html($customer_email ?: '—'); ?></div>
             </div>
-            <div class="customer-detail-card">
-                <div class="customer-detail-label"><?php esc_html_e('شماره تماس', 'tabesh'); ?></div>
-                <div class="customer-detail-value"><?php echo esc_html($customer_phone ?: '—'); ?></div>
+            
+            <!-- 4. Complete Address -->
+            <?php if (!empty($customer_full_address)): ?>
+            <div class="customer-detail-card" style="grid-column: 1 / -1;">
+                <div class="customer-detail-label"><?php esc_html_e('آدرس کامل', 'tabesh'); ?></div>
+                <div class="customer-detail-value"><?php echo esc_html($customer_full_address); ?></div>
             </div>
+            <?php endif; ?>
+            
+            <!-- 5. Other Information -->
+            <div class="customer-detail-card">
+                <div class="customer-detail-label"><?php esc_html_e('شناسه کاربر', 'tabesh'); ?></div>
+                <div class="customer-detail-value">#<?php echo esc_html($order->user_id); ?></div>
+            </div>
+            
             <?php if (!empty($customer_company)): ?>
             <div class="customer-detail-card">
                 <div class="customer-detail-label"><?php esc_html_e('شرکت', 'tabesh'); ?></div>
                 <div class="customer-detail-value"><?php echo esc_html($customer_company); ?></div>
             </div>
             <?php endif; ?>
-            <div class="customer-detail-card">
-                <div class="customer-detail-label"><?php esc_html_e('استان', 'tabesh'); ?></div>
-                <div class="customer-detail-value"><?php echo esc_html($customer_state ?: '—'); ?></div>
-            </div>
+            
+            <?php if (!empty($customer_city)): ?>
             <div class="customer-detail-card">
                 <div class="customer-detail-label"><?php esc_html_e('شهر', 'tabesh'); ?></div>
-                <div class="customer-detail-value"><?php echo esc_html($customer_city ?: '—'); ?></div>
+                <div class="customer-detail-value"><?php echo esc_html($customer_city); ?></div>
             </div>
+            <?php endif; ?>
+            
+            <?php if (!empty($customer_state)): ?>
+            <div class="customer-detail-card">
+                <div class="customer-detail-label"><?php esc_html_e('استان', 'tabesh'); ?></div>
+                <div class="customer-detail-value"><?php echo esc_html($customer_state); ?></div>
+            </div>
+            <?php endif; ?>
+            
+            <?php if (!empty($customer_postcode)): ?>
             <div class="customer-detail-card">
                 <div class="customer-detail-label"><?php esc_html_e('کد پستی', 'tabesh'); ?></div>
-                <div class="customer-detail-value"><?php echo esc_html($customer_postcode ?: '—'); ?></div>
+                <div class="customer-detail-value"><?php echo esc_html($customer_postcode); ?></div>
             </div>
+            <?php endif; ?>
+            
             <?php if (!empty($customer_country)): ?>
             <div class="customer-detail-card">
                 <div class="customer-detail-label"><?php esc_html_e('کشور', 'tabesh'); ?></div>
                 <div class="customer-detail-value"><?php echo esc_html($customer_country); ?></div>
-            </div>
-            <?php endif; ?>
-            <?php if (!empty($customer_address)): ?>
-            <div class="customer-detail-card" style="grid-column: 1 / -1;">
-                <div class="customer-detail-label"><?php esc_html_e('آدرس', 'tabesh'); ?></div>
-                <div class="customer-detail-value"><?php echo esc_html($customer_address); ?></div>
-            </div>
-            <?php endif; ?>
-            <?php if (!empty($customer_address_2)): ?>
-            <div class="customer-detail-card" style="grid-column: 1 / -1;">
-                <div class="customer-detail-label"><?php esc_html_e('آدرس (ادامه)', 'tabesh'); ?></div>
-                <div class="customer-detail-value"><?php echo esc_html($customer_address_2); ?></div>
             </div>
             <?php endif; ?>
             
