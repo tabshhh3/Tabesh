@@ -28,12 +28,24 @@
         // Open modal button
         $(document).on('click', '#tabesh-open-order-modal', function(e) {
             e.preventDefault();
-            $('#tabesh-order-modal').fadeIn(300);
+            e.stopPropagation();
+            
+            var $modal = $('#tabesh-order-modal');
+            
+            // Remove inline display:none style and add open class
+            $modal.removeAttr('style').addClass('tabesh-modal-open');
             $('body').addClass('modal-open');
         });
 
-        // Close modal
-        $(document).on('click', '.tabesh-modal-close, .tabesh-modal-overlay, #cancel-order-btn', function(e) {
+        // Close modal - multiple selectors
+        $(document).on('click', '.tabesh-modal-close, #cancel-order-btn', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            closeModal();
+        });
+        
+        // Close on overlay click
+        $(document).on('click', '.tabesh-modal-overlay', function(e) {
             e.preventDefault();
             closeModal();
         });
@@ -45,7 +57,7 @@
 
         // ESC key to close
         $(document).on('keydown', function(e) {
-            if (e.key === 'Escape' && $('#tabesh-order-modal').is(':visible')) {
+            if (e.key === 'Escape' && $('#tabesh-order-modal').hasClass('tabesh-modal-open')) {
                 closeModal();
             }
         });
@@ -55,9 +67,14 @@
      * Close modal and reset form
      */
     function closeModal() {
-        $('#tabesh-order-modal').fadeOut(300);
+        var $modal = $('#tabesh-order-modal');
+        $modal.removeClass('tabesh-modal-open');
         $('body').removeClass('modal-open');
-        resetForm();
+        
+        // Optional: Reset form after short delay for animation
+        setTimeout(function() {
+            resetForm();
+        }, 300);
     }
 
     /**
