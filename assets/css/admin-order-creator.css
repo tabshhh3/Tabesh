@@ -534,8 +534,20 @@ body.modal-open {
         border-radius: 16px !important;
     }
     
+    /* Stack 3-column layout vertically on mobile */
+    #tabesh-order-modal #tabesh-admin-order-form {
+        grid-template-columns: 1fr !important;
+    }
+    
     #tabesh-order-modal .tabesh-form-grid {
         grid-template-columns: 1fr !important;
+    }
+    
+    /* Reset section positioning for mobile */
+    #tabesh-order-modal .tabesh-form-section:first-child,
+    #tabesh-order-modal .tabesh-form-section:nth-child(2),
+    #tabesh-order-modal .tabesh-form-section:nth-child(3) {
+        grid-column: auto !important;
     }
     
     #tabesh-order-modal .tabesh-modal-footer {
