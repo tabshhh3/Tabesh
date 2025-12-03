@@ -28,18 +28,38 @@ class Tabesh_Admin_Order_Creator {
 	 * Enqueue frontend assets for the modal
 	 */
 	public function enqueue_assets() {
+		// Check if user is logged in and has admin privileges
+		if ( ! is_user_logged_in() ) {
+			return;
+		}
+
+		$user          = wp_get_current_user();
+		$allowed_roles = array( 'administrator', 'tabesh_super_admin', 'tabesh_admin' );
+
+		// Check if user has admin role
+		if ( ! array_intersect( $allowed_roles, $user->roles ) ) {
+			return;
+		}
+
 		// Only enqueue on pages with admin dashboard shortcode
 		global $post;
 		if ( ! is_a( $post, 'WP_Post' ) || ! has_shortcode( $post->post_content, 'tabesh_admin_dashboard' ) ) {
 			return;
 		}
 
-		// Enqueue CSS
+		$this->do_enqueue_assets();
+	}
+
+	/**
+	 * Actually enqueue the assets (separated for reusability)
+	 */
+	private function do_enqueue_assets() {
+		// Enqueue CSS with cache bust
 		wp_enqueue_style(
 			'tabesh-admin-order-creator',
 			TABESH_PLUGIN_URL . 'assets/css/admin-order-creator.css',
 			array(),
-			TABESH_VERSION
+			TABESH_VERSION . '.' . time()
 		);
 
 		// Enqueue JS
@@ -47,7 +67,7 @@ class Tabesh_Admin_Order_Creator {
 			'tabesh-admin-order-creator',
 			TABESH_PLUGIN_URL . 'assets/js/admin-order-creator.js',
 			array( 'jquery' ),
-			TABESH_VERSION,
+			TABESH_VERSION . '.' . time(),
 			true
 		);
 

@@ -124,35 +124,31 @@
         $('#print_type').on('change', function() {
             const printType = $(this).val();
             
-            // Remove required from page_count_total when other fields are shown
+            // Reset all page count fields
+            $('#page_count_color, #page_count_bw, #page_count_total').val('').prop('required', false);
+            
             if (printType === 'رنگی') {
                 $('#page-count-color-group').show();
                 $('#page-count-bw-group').hide();
                 $('#page-count-total-group').hide();
-                $('#page_count_bw').val(0);
-                $('#page_count_total').prop('required', false);
-                $('#page_count_color').prop('required', true);
+                $('#page_count_color').prop('required', true).attr('min', '1');
             } else if (printType === 'سیاه و سفید') {
                 $('#page-count-color-group').hide();
                 $('#page-count-bw-group').show();
                 $('#page-count-total-group').hide();
-                $('#page_count_color').val(0);
-                $('#page_count_total').prop('required', false);
-                $('#page_count_bw').prop('required', true);
+                $('#page_count_bw').prop('required', true).attr('min', '1');
             } else if (printType === 'ترکیبی') {
                 $('#page-count-color-group').show();
                 $('#page-count-bw-group').show();
                 $('#page-count-total-group').hide();
-                $('#page_count_total').prop('required', false);
-                $('#page_count_color').prop('required', true);
-                $('#page_count_bw').prop('required', true);
+                $('#page_count_color').prop('required', true).attr('min', '1');
+                $('#page_count_bw').prop('required', true).attr('min', '1');
             } else {
+                // Default - show total
                 $('#page-count-color-group').hide();
                 $('#page-count-bw-group').hide();
                 $('#page-count-total-group').show();
-                $('#page_count_total').prop('required', true);
-                $('#page_count_color').prop('required', false);
-                $('#page_count_bw').prop('required', false);
+                $('#page_count_total').prop('required', true).attr('min', '1');
             }
         });
 
@@ -438,6 +434,13 @@
      * Submit order
      */
     function submitOrder() {
+        // Prevent native form validation issues by removing required from hidden fields
+        $('#tabesh-admin-order-form').find('input, select, textarea').each(function() {
+            if ($(this).closest('.tabesh-form-group').is(':hidden')) {
+                $(this).prop('required', false);
+            }
+        });
+        
         // Get user ID
         const userType = $('input[name="user_selection_type"]:checked').val();
         let userId = null;
@@ -455,7 +458,6 @@
 
         // Validate form
         if (!isFormValid()) {
-            alert('لطفاً تمام فیلدهای الزامی را پر کنید');
             return;
         }
 
@@ -505,20 +507,43 @@
      * Check if form has all required fields
      */
     function isFormValid() {
-        const required = [
-            'book_title',
-            'book_size',
-            'paper_type',
-            'paper_weight',
-            'print_type',
-            'quantity',
-            'binding_type',
-            'license_type'
-        ];
-
-        for (let field of required) {
+        const printType = $('#print_type').val();
+        
+        // Check base required fields
+        const baseRequired = ['book_title', 'book_size', 'paper_type', 'paper_weight', 'print_type', 'quantity', 'binding_type', 'license_type'];
+        
+        for (let field of baseRequired) {
             const value = $('#' + field).val();
             if (!value || value.trim() === '') {
+                console.log('Missing field: ' + field);
+                return false;
+            }
+        }
+        
+        // Check page count based on print type
+        if (printType === 'رنگی') {
+            const colorPages = parseInt($('#page_count_color').val()) || 0;
+            if (colorPages < 1) {
+                alert('لطفاً تعداد صفحات رنگی را وارد کنید (حداقل 1 صفحه)');
+                return false;
+            }
+        } else if (printType === 'سیاه و سفید') {
+            const bwPages = parseInt($('#page_count_bw').val()) || 0;
+            if (bwPages < 1) {
+                alert('لطفاً تعداد صفحات سیاه و سفید را وارد کنید (حداقل 1 صفحه)');
+                return false;
+            }
+        } else if (printType === 'ترکیبی') {
+            const colorPages = parseInt($('#page_count_color').val()) || 0;
+            const bwPages = parseInt($('#page_count_bw').val()) || 0;
+            if (colorPages < 1 && bwPages < 1) {
+                alert('لطفاً حداقل یکی از تعداد صفحات رنگی یا سیاه و سفید را وارد کنید (حداقل 1 صفحه)');
+                return false;
+            }
+        } else {
+            const totalPages = parseInt($('#page_count_total').val()) || 0;
+            if (totalPages < 1) {
+                alert('لطفاً تعداد کل صفحات را وارد کنید (حداقل 1 صفحه)');
                 return false;
             }
         }
