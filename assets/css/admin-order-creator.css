@@ -8,6 +8,11 @@
 
 /* === CRITICAL: Override all conflicting styles === */
 
+/* CSS Custom Properties */
+:root {
+    --tabesh-modal-animation-duration: 0.3s;
+}
+
 /* Modal Hidden State */
 #tabesh-order-modal.tabesh-modal {
     display: none !important;
@@ -30,7 +35,7 @@
     justify-content: center !important;
     background: transparent !important;
     direction: rtl !important;
-    animation: tabeshModalFadeIn 0.3s ease-out !important;
+    animation: tabeshModalFadeIn var(--tabesh-modal-animation-duration) ease-out !important;
 }
 
 /* Animation Keyframes */
@@ -55,7 +60,7 @@
 }
 
 #tabesh-order-modal.tabesh-modal-open .tabesh-modal-content {
-    animation: tabeshModalScaleIn 0.3s ease-out !important;
+    animation: tabeshModalScaleIn var(--tabesh-modal-animation-duration) ease-out !important;
 }
 
 /* Overlay - Dark blur background */

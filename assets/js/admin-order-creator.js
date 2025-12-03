@@ -13,6 +13,9 @@
     let userSearchTimeout = null;
     let calculatedPrice = null;
     let selectedUserId = null;
+    
+    // Animation duration constant (matches CSS animation duration)
+    const MODAL_ANIMATION_DURATION = 300;
 
     $(document).ready(function() {
         initModal();
@@ -74,7 +77,7 @@
         // Optional: Reset form after short delay for animation
         setTimeout(function() {
             resetForm();
-        }, 300);
+        }, MODAL_ANIMATION_DURATION);
     }
 
     /**
