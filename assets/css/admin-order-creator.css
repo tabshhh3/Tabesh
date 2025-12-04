@@ -576,6 +576,7 @@ body.modal-open {
     border: none;
     color: white;
     transition: all 0.3s;
+    cursor: pointer;
 }
 
 #tabesh-open-order-modal:hover {
