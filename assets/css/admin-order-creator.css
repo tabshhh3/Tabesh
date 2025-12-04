@@ -83,12 +83,12 @@
     position: relative !important;
     z-index: 2 !important;
     background: #ffffff !important;
-    border-radius: 16px !important;
+    border-radius: 20px !important;
     box-shadow: 0 30px 60px rgba(0, 0, 0, 0.3) !important;
-    width: 95% !important;
-    max-width: 1400px !important;
-    max-height: 85vh !important;
-    margin: 5vh auto !important;
+    width: 90% !important;
+    max-width: 900px !important;
+    max-height: 90vh !important;
+    margin: 0 auto !important;
     display: flex !important;
     flex-direction: column !important;
     overflow: hidden !important;
@@ -103,21 +103,18 @@
 #tabesh-order-modal .tabesh-modal-header {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
     color: #ffffff !important;
-    padding: 12px 24px !important;
+    padding: 20px 30px !important;
     display: flex !important;
     justify-content: space-between !important;
     align-items: center !important;
     border-bottom: none !important;
     flex-shrink: 0 !important;
-    position: sticky !important;
-    top: 0 !important;
-    z-index: 10 !important;
 }
 
 #tabesh-order-modal .tabesh-modal-header h2 {
     margin: 0 !important;
-    font-size: 1.2rem !important;
-    font-weight: 600 !important;
+    font-size: 1.5rem !important;
+    font-weight: 700 !important;
     color: #ffffff !important;
 }
 
@@ -147,73 +144,39 @@
 
 /* Modal Body */
 #tabesh-order-modal .tabesh-modal-body {
-    padding: 16px !important;
+    padding: 30px !important;
     overflow-y: auto !important;
     flex: 1 !important;
     background: #f8fafc !important;
 }
 
-/* Form - Horizontal 3-Column Layout */
-#tabesh-order-modal #tabesh-admin-order-form {
-    display: grid !important;
-    grid-template-columns: 280px 1fr 280px !important;
-    gap: 16px !important;
-    align-items: start !important;
-}
-
 /* Form Sections */
 #tabesh-order-modal .tabesh-form-section {
     background: #ffffff !important;
-    border-radius: 12px !important;
-    padding: 16px !important;
-    margin-bottom: 0 !important;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06) !important;
+    border-radius: 16px !important;
+    padding: 24px !important;
+    margin-bottom: 20px !important;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08) !important;
     border: 1px solid #e2e8f0 !important;
 }
 
 #tabesh-order-modal .tabesh-form-section h3 {
-    font-size: 0.95rem !important;
+    font-size: 1.1rem !important;
     font-weight: 600 !important;
     color: #1e293b !important;
-    margin: 0 0 12px 0 !important;
-    padding-bottom: 8px !important;
+    margin: 0 0 20px 0 !important;
+    padding-bottom: 12px !important;
     border-bottom: 2px solid #667eea !important;
     display: flex !important;
     align-items: center !important;
     gap: 10px !important;
 }
 
-/* User Selection Section - Left Column */
-#tabesh-order-modal .tabesh-form-section:first-child {
-    grid-column: 1 !important;
-}
-
-/* Order Details Section - Center Column - Full 4-column grid */
-#tabesh-order-modal .tabesh-form-section:nth-child(2) {
-    grid-column: 2 !important;
-}
-
-#tabesh-order-modal .tabesh-form-section:nth-child(2) .tabesh-form-grid {
-    display: grid !important;
-    grid-template-columns: repeat(4, 1fr) !important;
-    gap: 12px !important;
-}
-
-/* Book Title - 2 columns */
-#tabesh-order-modal .tabesh-form-section:nth-child(2) .tabesh-form-grid-full {
-    grid-column: span 2 !important;
-}
-
-/* Price Section - Right Column */
-#tabesh-order-modal .tabesh-form-section:nth-child(3) {
-    grid-column: 3 !important;
-}
-
 /* Form Grid */
 #tabesh-order-modal .tabesh-form-grid {
     display: grid !important;
     grid-template-columns: repeat(2, 1fr) !important;
-    gap: 12px !important;
+    gap: 20px !important;
 }
 
 #tabesh-order-modal .tabesh-form-grid-full {
@@ -225,10 +188,10 @@
 #tabesh-order-modal .tabesh-select,
 #tabesh-order-modal .tabesh-textarea {
     width: 100% !important;
-    padding: 8px 12px !important;
-    border: 1.5px solid #e2e8f0 !important;
-    border-radius: 8px !important;
-    font-size: 13px !important;
+    padding: 12px 16px !important;
+    border: 2px solid #e2e8f0 !important;
+    border-radius: 10px !important;
+    font-size: 14px !important;
     background: #ffffff !important;
     color: #1e293b !important;
     transition: all 0.3s ease !important;
@@ -244,16 +207,12 @@
 }
 
 /* Labels */
-#tabesh-order-modal .tabesh-form-group {
-    margin-bottom: 0 !important;
-}
-
 #tabesh-order-modal .tabesh-form-group label {
     display: block !important;
-    font-weight: 500 !important;
+    font-weight: 600 !important;
     color: #475569 !important;
-    margin-bottom: 4px !important;
-    font-size: 12px !important;
+    margin-bottom: 8px !important;
+    font-size: 14px !important;
 }
 
 #tabesh-order-modal .tabesh-form-group label .required {
@@ -270,21 +229,15 @@
     padding-left: 3rem !important;
 }
 
-/* Textarea - Shorter */
-#tabesh-order-modal .tabesh-textarea {
-    min-height: 60px !important;
-    resize: none !important;
-}
-
 /* Radio and Checkbox Groups */
 #tabesh-order-modal .tabesh-radio-group,
 #tabesh-order-modal .tabesh-checkbox-group {
     display: flex !important;
     flex-wrap: wrap !important;
-    gap: 6px !important;
-    padding: 8px !important;
-    background: #f8fafc !important;
-    border-radius: 8px !important;
+    gap: 12px !important;
+    padding: 16px !important;
+    background: #ffffff !important;
+    border-radius: 10px !important;
     border: 1px solid #e2e8f0 !important;
 }
 
@@ -294,12 +247,11 @@
     align-items: center !important;
     cursor: pointer !important;
     font-weight: 400 !important;
-    padding: 6px 10px !important;
-    font-size: 12px !important;
-    background: #ffffff !important;
-    border-radius: 6px !important;
+    padding: 10px 16px !important;
+    background: #f1f5f9 !important;
+    border-radius: 8px !important;
     transition: all 0.3s ease !important;
-    border: 1px solid #e2e8f0 !important;
+    border: 2px solid transparent !important;
 }
 
 #tabesh-order-modal .tabesh-radio-group label:hover,
@@ -325,27 +277,27 @@
 }
 
 #tabesh-order-modal .user-section {
-    margin-top: 12px !important;
-    padding: 12px !important;
+    margin-top: 20px !important;
+    padding: 20px !important;
     background: #ffffff !important;
-    border-radius: 8px !important;
+    border-radius: 10px !important;
     border: 2px dashed #e2e8f0 !important;
 }
 
 /* User Search Results */
 #tabesh-order-modal .tabesh-search-results {
     position: relative !important;
-    margin-top: 8px !important;
+    margin-top: 12px !important;
     border: 2px solid #e2e8f0 !important;
     border-radius: 10px !important;
     background: #ffffff !important;
-    max-height: 150px !important;
+    max-height: 300px !important;
     overflow-y: auto !important;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08) !important;
 }
 
 #tabesh-order-modal .user-result-item {
-    padding: 8px 12px !important;
+    padding: 12px 16px !important;
     cursor: pointer !important;
     border-bottom: 1px solid #e2e8f0 !important;
     transition: all 0.3s ease !important;
@@ -376,7 +328,7 @@
     display: flex !important;
     justify-content: space-between !important;
     align-items: center !important;
-    padding: 10px 14px !important;
+    padding: 16px 20px !important;
     background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%) !important;
     border: 2px solid #60a5fa !important;
     border-radius: 10px !important;
@@ -412,35 +364,24 @@
     border-color: #ef4444 !important;
 }
 
-/* New User Form - Compact */
-#tabesh-order-modal #new-user-section .tabesh-form-group {
-    margin-bottom: 8px !important;
-}
-
-#tabesh-order-modal #create-user-btn {
-    padding: 8px 16px !important;
-    font-size: 12px !important;
-    margin-top: 8px !important;
-}
-
 /* Price Display Section */
 #tabesh-order-modal .tabesh-price-display {
     background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%) !important;
     border: 2px solid #86efac !important;
-    border-radius: 10px !important;
-    padding: 12px !important;
+    border-radius: 12px !important;
+    padding: 20px !important;
 }
 
 #tabesh-order-modal .final-price {
     background: #ffffff !important;
     border: 2px solid #22c55e !important;
     border-radius: 10px !important;
-    padding: 10px !important;
+    padding: 16px !important;
 }
 
 #tabesh-order-modal #final-price-value {
     color: #16a34a !important;
-    font-size: 1.2rem !important;
+    font-size: 1.5rem !important;
     font-weight: 700 !important;
 }
 
@@ -449,7 +390,7 @@
     display: flex !important;
     justify-content: space-between !important;
     align-items: center !important;
-    margin-bottom: 8px !important;
+    margin-bottom: 12px !important;
 }
 
 #tabesh-order-modal .calculated-price label,
@@ -460,40 +401,28 @@
 }
 
 #tabesh-order-modal #calculated-price-value {
-    font-size: 1rem !important;
+    font-size: 1.25rem !important;
     font-weight: 700 !important;
     color: #64748b !important;
     direction: ltr !important;
     font-family: 'Courier New', monospace !important;
 }
 
-/* Override Price Section - Compact */
-#tabesh-order-modal .tabesh-price-display .tabesh-form-group {
-    margin: 10px 0 !important;
-}
-
-#tabesh-order-modal #override-price-check {
-    margin-left: 6px !important;
-}
-
 /* Modal Footer */
 #tabesh-order-modal .tabesh-modal-footer {
-    grid-column: 1 / -1 !important;
     background: #ffffff !important;
-    padding: 12px 16px !important;
+    padding: 20px 30px !important;
     display: flex !important;
-    justify-content: center !important;
+    justify-content: flex-end !important;
     gap: 12px !important;
     border-top: 1px solid #e2e8f0 !important;
-    margin-top: 12px !important;
-    border-radius: 10px !important;
     flex-shrink: 0 !important;
 }
 
 #tabesh-order-modal .tabesh-modal-footer .button {
-    padding: 10px 20px !important;
-    border-radius: 8px !important;
-    font-size: 13px !important;
+    padding: 12px 24px !important;
+    border-radius: 10px !important;
+    font-size: 14px !important;
     font-weight: 600 !important;
     cursor: pointer !important;
     transition: all 0.3s ease !important;
@@ -534,20 +463,8 @@ body.modal-open {
         border-radius: 16px !important;
     }
     
-    /* Stack 3-column layout vertically on mobile */
-    #tabesh-order-modal #tabesh-admin-order-form {
-        grid-template-columns: 1fr !important;
-    }
-    
     #tabesh-order-modal .tabesh-form-grid {
         grid-template-columns: 1fr !important;
-    }
-    
-    /* Reset section positioning for mobile */
-    #tabesh-order-modal .tabesh-form-section:first-child,
-    #tabesh-order-modal .tabesh-form-section:nth-child(2),
-    #tabesh-order-modal .tabesh-form-section:nth-child(3) {
-        grid-column: auto !important;
     }
     
     #tabesh-order-modal .tabesh-modal-footer {
