@@ -5,28 +5,11 @@
 (function($) {
     'use strict';
 
-    // Constants
-    const MODAL_ANIMATION_DURATION = 300; // milliseconds
-
     // Helper function to safely construct REST URLs without double slashes
     function buildRestUrl(base, endpoint) {
         const cleanBase = base.replace(/\/+$/, ''); // Remove trailing slashes
         const cleanEndpoint = endpoint.replace(/^\/+/, ''); // Remove leading slashes
         return cleanBase + '/' + cleanEndpoint;
-    }
-
-    /**
-     * Helper function to close a modal with animation
-     * @param {string} modalId - The ID of the modal to close (with or without #)
-     */
-    function closeModal(modalId) {
-        // Ensure modalId has # prefix
-        const $modal = modalId.startsWith('#') ? $(modalId) : $('#' + modalId);
-        
-        $modal.removeClass('show');
-        setTimeout(function() {
-            $modal.remove();
-        }, MODAL_ANIMATION_DURATION);
     }
 
     // Dynamic Parameter Manager Class
@@ -315,13 +298,13 @@
 
             // Close modal
             $('.tabesh-modal-close').on('click', () => {
-                $('#order-details-modal').removeClass('show');
+                $('#order-details-modal').hide();
             });
 
             // Click outside modal to close
             $(window).on('click', (e) => {
                 if ($(e.target).hasClass('tabesh-modal')) {
-                    $(e.target).removeClass('show');
+                    $('#order-details-modal').hide();
                 }
             });
         }
@@ -391,7 +374,7 @@
             const $content = $('#order-details-content');
 
             $content.html('<p style="text-align:center;"><span class="tabesh-loading-inline"></span> در حال بارگذاری...</p>');
-            $modal.addClass('show');
+            $modal.show();
 
             // Get order details via AJAX
             $.ajax({
@@ -637,7 +620,7 @@
 
         showRejectModal(fileId) {
             const modalHtml = `
-                <div class="tabesh-modal" id="reject-modal">
+                <div class="tabesh-modal" id="reject-modal" style="display: none;">
                     <div class="tabesh-modal-overlay"></div>
                     <div class="tabesh-modal-dialog">
                         <div class="tabesh-modal-content">
@@ -669,16 +652,13 @@
             
             // Add modal to body
             $('body').append(modalHtml);
-            $('#reject-modal').addClass('show');
+            $('#reject-modal').fadeIn(300);
             
             // Bind close events
             $('.tabesh-modal-close').on('click', function() {
-                closeModal('reject-modal');
-            });
-            
-            // Close on backdrop click
-            $('#reject-modal .tabesh-modal-overlay').on('click', function() {
-                closeModal('reject-modal');
+                $('#reject-modal').fadeOut(300, function() {
+                    $(this).remove();
+                });
             });
             
             // Bind confirm event
@@ -712,7 +692,9 @@
                     } else {
                         alert(response.message || 'خطا در رد فایل');
                     }
-                    closeModal('reject-modal');
+                    $('#reject-modal').fadeOut(300, function() {
+                        $(this).remove();
+                    });
                 },
                 error: function() {
                     alert('خطا در ارتباط با سرور');
@@ -722,7 +704,7 @@
 
         showCommentModal(fileId) {
             const modalHtml = `
-                <div class="tabesh-modal" id="comment-modal">
+                <div class="tabesh-modal" id="comment-modal" style="display: none;">
                     <div class="tabesh-modal-overlay"></div>
                     <div class="tabesh-modal-dialog">
                         <div class="tabesh-modal-content">
@@ -754,16 +736,13 @@
             
             // Add modal to body
             $('body').append(modalHtml);
-            $('#comment-modal').addClass('show');
+            $('#comment-modal').fadeIn(300);
             
             // Bind close events
             $('.tabesh-modal-close').on('click', function() {
-                closeModal('comment-modal');
-            });
-            
-            // Close on backdrop click
-            $('#comment-modal .tabesh-modal-overlay').on('click', function() {
-                closeModal('comment-modal');
+                $('#comment-modal').fadeOut(300, function() {
+                    $(this).remove();
+                });
             });
             
             // Bind confirm event
@@ -797,7 +776,9 @@
                     } else {
                         alert(response.message || 'خطا در ثبت نظر');
                     }
-                    closeModal('comment-modal');
+                    $('#comment-modal').fadeOut(300, function() {
+                        $(this).remove();
+                    });
                 },
                 error: function() {
                     alert('خطا در ارتباط با سرور');
@@ -807,7 +788,7 @@
 
         showCommentsModal(fileId) {
             const modalHtml = `
-                <div class="tabesh-modal" id="comments-modal">
+                <div class="tabesh-modal" id="comments-modal" style="display: none;">
                     <div class="tabesh-modal-overlay"></div>
                     <div class="tabesh-modal-dialog tabesh-modal-large">
                         <div class="tabesh-modal-content">
@@ -834,16 +815,13 @@
             
             // Add modal to body
             $('body').append(modalHtml);
-            $('#comments-modal').addClass('show');
+            $('#comments-modal').fadeIn(300);
             
             // Bind close events
             $('.tabesh-modal-close').on('click', function() {
-                closeModal('comments-modal');
-            });
-            
-            // Close on backdrop click
-            $('#comments-modal .tabesh-modal-overlay').on('click', function() {
-                closeModal('comments-modal');
+                $('#comments-modal').fadeOut(300, function() {
+                    $(this).remove();
+                });
             });
             
             // Load comments
