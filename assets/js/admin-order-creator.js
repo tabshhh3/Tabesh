@@ -82,7 +82,7 @@
                 'width': '95%',
                 'max-width': '1400px',
                 'max-height': 'calc(100vh - 40px)',
-                'margin': '0',
+                'margin': '0 auto',
                 'display': 'flex',
                 'flex-direction': 'column',
                 'overflow': 'hidden',
