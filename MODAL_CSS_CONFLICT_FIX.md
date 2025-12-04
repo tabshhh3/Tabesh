@@ -154,9 +154,9 @@ The system has other modals like `#rejection-modal` (in file-management-admin.ph
 
 ## Related Documentation
 
-- Original issue: PR #64
-- Modal implementation: `admin-order-creator.css`
+- Original modal implementation: `admin-order-creator.css`
 - Modal JavaScript: `assets/js/admin-order-creator.js`
+- Admin dashboard template: `templates/admin/shortcode-admin-dashboard.php`
 
 ## Browser Compatibility
 
