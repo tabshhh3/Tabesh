@@ -106,9 +106,6 @@ if ($is_admin) {
             'confirmStatusChange' => __('آیا از تغییر وضعیت این سفارش اطمینان دارید؟', 'tabesh'),
         )
     ));
-    
-    // Note: Admin order creator assets are enqueued via Tabesh_Admin_Order_Creator::enqueue_assets()
-    // which hooks into wp_enqueue_scripts and checks for the shortcode
     ?>
 
     <div class="tabesh-admin-dashboard" dir="rtl" data-theme="light">
@@ -122,12 +119,6 @@ if ($is_admin) {
                 </div>
             </div>
             <div class="header-actions">
-                <?php
-                // Render new order button
-                if (isset(Tabesh()->admin_order_creator)) {
-                    Tabesh()->admin_order_creator->render_new_order_button();
-                }
-                ?>
                 <button class="header-btn theme-toggle-btn" aria-label="<?php esc_attr_e('تغییر تم', 'tabesh'); ?>">
                     🌙 <span><?php esc_html_e('حالت تاریک', 'tabesh'); ?></span>
                 </button>
@@ -342,13 +333,6 @@ if ($is_admin) {
             <div class="modal-body"></div>
         </div>
     </div>
-
-    <?php
-    // Render order creator modal
-    if (isset(Tabesh()->admin_order_creator)) {
-        Tabesh()->admin_order_creator->render_order_modal();
-    }
-    ?>
 
 <?php
 } else {
