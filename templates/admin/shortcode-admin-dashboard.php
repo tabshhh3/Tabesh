@@ -119,6 +119,9 @@ if ($is_admin) {
                 </div>
             </div>
             <div class="header-actions">
+                <button class="header-btn admin-new-order-btn" aria-label="<?php esc_attr_e('ثبت سفارش جدید', 'tabesh'); ?>">
+                    📝 <span><?php esc_html_e('ثبت سفارش جدید', 'tabesh'); ?></span>
+                </button>
                 <button class="header-btn theme-toggle-btn" aria-label="<?php esc_attr_e('تغییر تم', 'tabesh'); ?>">
                     🌙 <span><?php esc_html_e('حالت تاریک', 'tabesh'); ?></span>
                 </button>
@@ -331,6 +334,20 @@ if ($is_admin) {
                 <button class="modal-close-btn" aria-label="<?php esc_attr_e('بستن', 'tabesh'); ?>">✕</button>
             </div>
             <div class="modal-body"></div>
+        </div>
+
+        <!-- Modal for New Order Form / مودال برای فرم ثبت سفارش جدید -->
+        <div id="tabesh-admin-order-modal" class="tabesh-admin-modal" style="display: none;">
+            <div class="modal-overlay"></div>
+            <div class="modal-container">
+                <div class="modal-header">
+                    <h3><?php esc_html_e('ثبت سفارش جدید', 'tabesh'); ?></h3>
+                    <button class="modal-close-btn" aria-label="<?php esc_attr_e('بستن', 'tabesh'); ?>">✕</button>
+                </div>
+                <div class="modal-body">
+                    <?php echo do_shortcode('[tabesh_admin_order_form]'); ?>
+                </div>
+            </div>
         </div>
     </div>
 
