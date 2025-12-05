@@ -318,8 +318,7 @@ $form_title = isset($atts['title']) ? $atts['title'] : __('ثبت سفارش ج�
                                id="aof-page-count-total" 
                                name="page_count_total" 
                                class="tabesh-aof-input" 
-                               min="1" 
-                               required>
+                               min="1">
                     </div>
 
                     <!-- License Type / نوع مجوز -->
