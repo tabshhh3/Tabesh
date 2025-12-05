@@ -213,7 +213,8 @@
 
         const $btn = $('#aof-create-user-btn');
         $btn.prop('disabled', true).html(
-            '<span class="dashicons dashicons-update spin"></span>'
+            '<span class="dashicons dashicons-update spin"></span> ' +
+            tabeshAdminOrderForm.strings.submitting
         );
 
         $.ajax({
@@ -277,6 +278,12 @@
         
         // Initialize page count fields on load / راه‌اندازی فیلدهای تعداد صفحات در بارگذاری
         updatePageCountFields();
+
+        // Chip checkbox fallback for browsers without :has() support
+        // فالبک چک‌باکس چیپ برای مرورگرهای بدون پشتیبانی :has()
+        $('input[name="extras[]"]').on('change', function() {
+            $(this).closest('.tabesh-aof-chip').toggleClass('chip-checked', $(this).is(':checked'));
+        });
 
         // Override price checkbox / چک‌باکس قیمت دلخواه
         $('#aof-override-price-check').on('change', function() {
@@ -412,7 +419,8 @@
 
         const $btn = $('#aof-calculate-btn');
         $btn.prop('disabled', true).html(
-            '<span class="dashicons dashicons-update spin"></span>'
+            '<span class="dashicons dashicons-update spin"></span> ' +
+            tabeshAdminOrderForm.strings.calculating
         );
 
         $.ajax({

@@ -192,7 +192,7 @@ $form_title = isset($atts['title']) ? $atts['title'] : __('ثبت سفارش ج�
                 <div class="tabesh-aof-field">
                     <label for="aof-paper-weight"><?php echo esc_html__('گرماژ', 'tabesh'); ?> <span class="req">*</span></label>
                     <select id="aof-paper-weight" name="paper_weight" class="tabesh-aof-select" required>
-                        <option value=""><?php echo esc_html__('ابتدا کاغذ', 'tabesh'); ?></option>
+                        <option value=""><?php echo esc_html__('ابتدا نوع کاغذ', 'tabesh'); ?></option>
                     </select>
                 </div>
 
