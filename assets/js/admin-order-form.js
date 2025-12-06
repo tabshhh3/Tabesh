@@ -434,9 +434,7 @@
             },
             success: function(response) {
                 if (response.success && response.data) {
-                    calculatedPrice = response.data.total_price;
                     displayCalculatedPrice(response.data);
-                    updateFinalPrice();
                 }
             },
             error: function(xhr) {
