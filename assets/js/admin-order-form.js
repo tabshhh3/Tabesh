@@ -16,6 +16,7 @@
     let userSearchTimeout = null;
     let calculatedPrice = null;
     let selectedUserId = null;
+    let calculatedUnitPriceTomans = null;
 
     /**
      * Initialize when document is ready
@@ -474,7 +475,7 @@
         $('#aof-calculated-price').text(formatPrice(totalPriceTomans));
         
         // ذخیره قیمت تک جلد به تومان برای محاسبات بعدی
-        window.calculatedUnitPriceTomans = unitPriceTomans;
+        calculatedUnitPriceTomans = unitPriceTomans;
         
         // Store calculated price in Rials for compatibility
         calculatedPrice = totalPriceRials;
@@ -489,7 +490,7 @@
      */
     function updateFinalPrice() {
         let finalPriceTomans = rialsToTomans(calculatedPrice || 0);
-        let unitPriceTomans = window.calculatedUnitPriceTomans || 0;
+        let unitPriceTomans = calculatedUnitPriceTomans || 0;
         
         const quantity = parseInt($('#aof-quantity').val()) || 1;
         
@@ -743,7 +744,7 @@
         $('#aof-unit-price-final').text('---');
         calculatedPrice = null;
         selectedUserId = null;
-        window.calculatedUnitPriceTomans = null;
+        calculatedUnitPriceTomans = null;
         
         // Reset customer selection / بازنشانی انتخاب مشتری
         $('input[name="customer_type"][value="existing"]').prop('checked', true).trigger('change');
@@ -765,6 +766,7 @@
      * @returns {number} قیمت به تومان
      */
     function rialsToTomans(rials) {
+        if (!rials || isNaN(rials)) return 0;
         return Math.round(rials / 10);
     }
 
@@ -776,6 +778,7 @@
      * @returns {number} قیمت به ریال
      */
     function tomansToRials(tomans) {
+        if (!tomans || isNaN(tomans)) return 0;
         return Math.round(tomans * 10);
     }
 
