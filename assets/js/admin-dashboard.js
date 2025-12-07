@@ -484,6 +484,14 @@
                     if (response.success) {
                         this.showToast('وضعیت با موفقیت تغییر کرد', 'success');
                         this.updateStatusInUI(orderId, newStatus);
+                        
+                        // If status changed to confirmed or processing, reload to show substeps
+                        if (newStatus === 'confirmed' || newStatus === 'processing') {
+                            setTimeout(() => {
+                                location.reload();
+                            }, 1000);
+                        }
+                        
                         $select.val('');
                     } else {
                         this.showToast('خطا: ' + response.message, 'error');
@@ -579,10 +587,9 @@
                     this.hideLoading();
 
                     if (response.success) {
-                        this.showToast(response.message || 'بهروزرسانی انجام شد', 'success');
-                        
                         // Update UI
                         const $item = $('.substep-item[data-substep-id="' + substepId + '"]');
+                        
                         if (isCompleted) {
                             $item.addClass('completed');
                             if (!$item.find('.substep-badge').length) {
@@ -595,14 +602,14 @@
 
                         // Update progress
                         if (response.data && response.data.progress !== undefined) {
-                            $item.closest('.print-substeps-container').find('.progress-badge')
-                                .text(response.data.progress + '% تکمیل شده');
+                            const $container = $item.closest('.print-substeps-container');
+                            $container.find('.substep-badge')
+                                .text(response.data.progress + '%');
                         }
 
-                        // If all completed, reload
+                        // If all completed, show notification (no automatic status change)
                         if (response.data && response.data.all_completed) {
-                            this.showToast('تمام مراحل چاپ تکمیل شد!', 'success');
-                            setTimeout(() => location.reload(), 2000);
+                            this.showToast('✅ تمام مراحل چاپ تکمیل شد! اکنون میتوانید وضعیت را به "آماده تحویل" تغییر دهید.', 'success');
                         }
                     } else {
                         this.showToast('خطا: ' + response.message, 'error');

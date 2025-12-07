@@ -336,13 +336,19 @@ $status_order = array('pending', 'confirmed', 'processing', 'ready', 'completed'
                                 </div>
                             </div>
 
-                            <!-- Print Substeps Section - Only shown for "processing" status -->
-                            <?php if ($order->status === 'processing'): ?>
+                            <!-- Print Substeps Section - Shown for "confirmed" and "processing" status -->
+                            <?php if (in_array($order->status, array('confirmed', 'processing'))): ?>
                                 <?php 
                                 $substeps = Tabesh()->print_substeps->get_order_substeps($order->id);
                                 $progress = Tabesh()->print_substeps->calculate_print_progress($order->id);
                                 ?>
                                 <?php if (!empty($substeps)): ?>
+                                    <?php if ($order->status === 'confirmed'): ?>
+                                        <div class="substeps-guide-message">
+                                            <span class="guide-icon">ℹ️</span>
+                                            <p><?php _e('لطفاً تمام مراحل چاپ را تیک بزنید. بعد از تکمیل همه مراحل، میتوانید وضعیت را به "آماده تحویل" تغییر دهید.', 'tabesh'); ?></p>
+                                        </div>
+                                    <?php endif; ?>
                                     <div class="print-substeps-section">
                                         <div class="section-header">
                                             <span class="section-icon">🖨️</span>

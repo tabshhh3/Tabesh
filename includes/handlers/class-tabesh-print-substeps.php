@@ -146,6 +146,16 @@ class Tabesh_Print_Substeps {
             );
         }
         
+        // 6. بستهبندی - Packaging (Always the last step)
+        $substeps[] = array(
+            'order_id' => $order_id,
+            'substep_key' => 'packaging',
+            'substep_title' => 'بستهبندی',
+            'substep_details' => 'آمادهسازی نهایی و بستهبندی سفارش',
+            'is_completed' => 0,
+            'display_order' => $display_order++
+        );
+        
         // Insert substeps into database
         foreach ($substeps as $substep) {
             $wpdb->insert($substeps_table, $substep);
@@ -272,8 +282,9 @@ class Tabesh_Print_Substeps {
         $progress = $this->calculate_print_progress($substep->order_id);
         $all_completed = $this->are_all_substeps_completed($substep->order_id);
         
-        // If all substeps completed, auto-update order status to "ready"
+        // Log substep completion for tracking (without changing order status)
         if ($all_completed) {
+            $logs_table = $wpdb->prefix . 'tabesh_logs';
             $orders_table = $wpdb->prefix . 'tabesh_orders';
             
             // Get current order info
@@ -282,42 +293,37 @@ class Tabesh_Print_Substeps {
                 $substep->order_id
             ));
             
-            // Update order status
-            $wpdb->update(
-                $orders_table,
-                array('status' => 'ready', 'updated_at' => current_time('mysql')),
-                array('id' => $substep->order_id),
-                array('%s', '%s'),
-                array('%d')
-            );
-            
-            // Log the status change
             $staff_user_id = get_current_user_id();
-            $current_user = wp_get_current_user();
-            $logs_table = $wpdb->prefix . 'tabesh_logs';
             
-            $wpdb->insert(
-                $logs_table,
-                array(
-                    'order_id' => $substep->order_id,
-                    'user_id' => $current_order->user_id,
-                    'staff_user_id' => $staff_user_id,
-                    'action' => 'status_change',
-                    'old_status' => $current_order->status,
-                    'new_status' => 'ready',
-                    'description' => __('وضعیت به صورت خودکار از "در حال چاپ" به "آماده تحویل" تغییر کرد (تمام مراحل چاپ تکمیل شد)', 'tabesh')
-                ),
-                array('%d', '%d', '%d', '%s', '%s', '%s', '%s')
-            );
+            // Only log if this is the first time all substeps are completed
+            $existing_log = $wpdb->get_var($wpdb->prepare(
+                "SELECT COUNT(*) FROM $logs_table 
+                 WHERE order_id = %d 
+                 AND action = %s",
+                $substep->order_id,
+                'substeps_completed'
+            ));
             
-            // Send notification
-            Tabesh()->notifications->send_status_notification($substep->order_id, 'ready');
+            if ($existing_log == 0) {
+                $wpdb->insert(
+                    $logs_table,
+                    array(
+                        'order_id' => $substep->order_id,
+                        'user_id' => $current_order->user_id,
+                        'staff_user_id' => $staff_user_id,
+                        'action' => 'substeps_completed',
+                        'description' => __('تمام مراحل چاپ تکمیل شد - آماده برای تغییر وضعیت به "آماده تحویل"', 'tabesh')
+                    ),
+                    array('%d', '%d', '%d', '%s', '%s')
+                );
+            }
         }
         
         return new WP_REST_Response(array(
             'success' => true,
             'message' => __('وضعیت با موفقیت بهروزرسانی شد', 'tabesh'),
             'data' => array(
+                'order_id' => $substep->order_id,
                 'progress' => $progress,
                 'all_completed' => $all_completed
             )

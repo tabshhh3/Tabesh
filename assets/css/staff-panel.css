@@ -1414,6 +1414,39 @@ input:focus-visible,
    Print Substeps Section (New Feature)
    ========================================== */
 
+.tabesh-staff-panel .substeps-guide-message {
+    background: linear-gradient(135deg, #e7f3ff 0%, #d0e9ff 100%);
+    border: 1px solid #b3d9ff;
+    border-radius: var(--border-radius-sm);
+    padding: 15px 20px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.tabesh-staff-panel .substeps-guide-message .guide-icon {
+    font-size: 24px;
+    flex-shrink: 0;
+}
+
+.tabesh-staff-panel .substeps-guide-message p {
+    margin: 0;
+    color: #0066cc;
+    font-size: 14px;
+    line-height: 1.6;
+    font-weight: 500;
+}
+
+.tabesh-staff-panel[data-theme='dark'] .substeps-guide-message {
+    background: linear-gradient(135deg, #1e3a5f 0%, #2d4a6f 100%);
+    border-color: #3a5f8f;
+}
+
+.tabesh-staff-panel[data-theme='dark'] .substeps-guide-message p {
+    color: #66b3ff;
+}
+
 .tabesh-staff-panel .print-substeps-section {
     padding: 25px;
     background: var(--bg-primary);
