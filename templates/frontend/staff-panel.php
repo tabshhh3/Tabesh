@@ -346,7 +346,7 @@ $status_order = array('pending', 'confirmed', 'processing', 'ready', 'completed'
                                     <?php if ($order->status === 'confirmed'): ?>
                                         <div class="substeps-guide-message">
                                             <span class="guide-icon">ℹ️</span>
-                                            <p><?php _e('لطفاً تمام مراحل چاپ را تیک بزنید. بعد از تکمیل همه مراحل، سفارش آماده تحویل میشود.', 'tabesh'); ?></p>
+                                            <p><?php _e('لطفاً تمام مراحل چاپ را تیک بزنید. بعد از تکمیل همه مراحل، میتوانید وضعیت را به "آماده تحویل" تغییر دهید.', 'tabesh'); ?></p>
                                         </div>
                                     <?php endif; ?>
                                     <div class="print-substeps-section">

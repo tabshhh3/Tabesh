@@ -478,10 +478,6 @@
                     if (response.success) {
                         // Update the substep item UI
                         const $substepItem = $(`.print-substep-item[data-substep-id="${substepId}"]`);
-                        const $checkbox = $substepItem.find('.substep-checkbox');
-                        
-                        // Ensure checkbox reflects the state
-                        $checkbox.prop('checked', isCompleted);
                         
                         if (isCompleted) {
                             $substepItem.addClass('completed');

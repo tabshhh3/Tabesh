@@ -299,10 +299,9 @@ class Tabesh_Print_Substeps {
             $existing_log = $wpdb->get_var($wpdb->prepare(
                 "SELECT COUNT(*) FROM $logs_table 
                  WHERE order_id = %d 
-                 AND action = 'substeps_completed' 
-                 AND description LIKE %s",
+                 AND action = %s",
                 $substep->order_id,
-                '%تمام مراحل چاپ تکمیل شد%'
+                'substeps_completed'
             ));
             
             if ($existing_log == 0) {
