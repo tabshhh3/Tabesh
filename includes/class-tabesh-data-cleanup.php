@@ -361,16 +361,24 @@ class Tabesh_Data_Cleanup {
 				)
 			);
 
-			// Delete file versions
-            // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-			$wpdb->query(
+			// Delete file versions (two-step process to avoid MySQL subquery limitation)
+			$file_ids = $wpdb->get_col(
 				$wpdb->prepare(
-					"DELETE FROM {$wpdb->prefix}tabesh_file_versions WHERE file_id IN (
-                    SELECT id FROM {$wpdb->prefix}tabesh_files WHERE order_id = %d
-                )",
+					"SELECT id FROM {$wpdb->prefix}tabesh_files WHERE order_id = %d",
 					$order_id
 				)
 			);
+			
+			if ( ! empty( $file_ids ) ) {
+				$placeholders = implode( ',', array_fill( 0, count( $file_ids ), '%d' ) );
+				// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$wpdb->query(
+					$wpdb->prepare(
+						"DELETE FROM {$wpdb->prefix}tabesh_file_versions WHERE file_id IN ($placeholders)",
+						...$file_ids
+					)
+				);
+			}
 
 			// Delete upload tasks
             // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
@@ -605,12 +613,34 @@ class Tabesh_Data_Cleanup {
 		global $wpdb;
 
 		$deleted = 0;
+		
+		// Whitelist of deletable settings to prevent accidental deletion of critical settings
+		$protected_settings = array(
+			'ftp_username',
+			'ftp_password',
+			'ftp_host',
+			'sms_username',
+			'sms_password',
+		);
+		
 		foreach ( $keys as $key ) {
-            // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+			$sanitized_key = sanitize_text_field( $key );
+			
+			// Skip if key is empty or in protected list
+			if ( empty( $sanitized_key ) || in_array( $sanitized_key, $protected_settings, true ) ) {
+				continue;
+			}
+			
+			// Validate key format (alphanumeric, underscores, and hyphens only)
+			if ( ! preg_match( '/^[a-zA-Z0-9_-]+$/', $sanitized_key ) ) {
+				continue;
+			}
+			
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 			$result = $wpdb->query(
 				$wpdb->prepare(
 					"DELETE FROM {$wpdb->prefix}tabesh_settings WHERE setting_key = %s",
-					sanitize_text_field( $key )
+					$sanitized_key
 				)
 			);
 			if ( $result ) {
