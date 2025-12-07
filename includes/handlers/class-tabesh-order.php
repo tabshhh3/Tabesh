@@ -554,11 +554,7 @@ class Tabesh_Order {
 			}
 
 			// Rebuild $data array with serial_number as first field to match formats array order.
-			$data_with_serial = array( 'serial_number' => $next_serial );
-			foreach ( $data as $key => $value ) {
-				$data_with_serial[ $key ] = $value;
-			}
-			$data = $data_with_serial;
+			$data = array_merge( array( 'serial_number' => $next_serial ), $data );
 		}
 
 		// Use prepared statement with proper format specification
