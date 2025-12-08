@@ -205,6 +205,13 @@ final class Tabesh {
     public $admin_order_form;
 
     /**
+     * Export/Import handler
+     *
+     * @var Tabesh_Export_Import
+     */
+    public $export_import;
+
+    /**
      * Cache for settings to avoid redundant database queries
      *
      * @var array
@@ -275,6 +282,8 @@ final class Tabesh {
         $this->admin_order_creator = new Tabesh_Admin_Order_Creator();
         // Initialize admin order form shortcode handler
         $this->admin_order_form = new Tabesh_Admin_Order_Form();
+        // Initialize export/import handler
+        $this->export_import = new Tabesh_Export_Import();
 
         // Register REST API routes
         add_action('rest_api_init', array($this, 'register_rest_routes'));
@@ -1162,6 +1171,31 @@ final class Tabesh {
             'permission_callback' => array($this, 'can_manage_admin')
         ));
 
+        // Export/Import routes
+        register_rest_route(TABESH_REST_NAMESPACE, '/export', array(
+            'methods' => 'POST',
+            'callback' => array($this, 'rest_export_data'),
+            'permission_callback' => array($this, 'can_manage_admin')
+        ));
+
+        register_rest_route(TABESH_REST_NAMESPACE, '/import', array(
+            'methods' => 'POST',
+            'callback' => array($this, 'rest_import_data'),
+            'permission_callback' => array($this, 'can_manage_admin')
+        ));
+
+        register_rest_route(TABESH_REST_NAMESPACE, '/import/validate', array(
+            'methods' => 'POST',
+            'callback' => array($this, 'rest_validate_import'),
+            'permission_callback' => array($this, 'can_manage_admin')
+        ));
+
+        register_rest_route(TABESH_REST_NAMESPACE, '/export/preview', array(
+            'methods' => 'GET',
+            'callback' => array($this, 'rest_export_preview'),
+            'permission_callback' => array($this, 'can_manage_admin')
+        ));
+
         // Admin order creator routes
         register_rest_route(TABESH_REST_NAMESPACE, '/admin/search-users-live', array(
             'methods' => 'GET',
@@ -2027,6 +2061,132 @@ final class Tabesh {
             self::$settings_cache = array();
         } elseif (isset(self::$settings_cache[$key])) {
             unset(self::$settings_cache[$key]);
+        }
+    }
+
+    /**
+     * REST API: Export data
+     *
+     * @param WP_REST_Request $request
+     * @return WP_REST_Response
+     */
+    public function rest_export_data($request) {
+        $sections = $request->get_param('sections');
+        
+        if (!is_array($sections)) {
+            $sections = array();
+        }
+
+        try {
+            $export_data = $this->export_import->export($sections);
+            
+            return new WP_REST_Response(array(
+                'success' => true,
+                'data' => $export_data
+            ), 200);
+
+        } catch (Exception $e) {
+            return new WP_REST_Response(array(
+                'success' => false,
+                'message' => $e->getMessage()
+            ), 500);
+        }
+    }
+
+    /**
+     * REST API: Import data
+     *
+     * @param WP_REST_Request $request
+     * @return WP_REST_Response
+     */
+    public function rest_import_data($request) {
+        $data = $request->get_param('data');
+        $sections = $request->get_param('sections');
+        $mode = $request->get_param('mode');
+
+        if (!is_array($data)) {
+            return new WP_REST_Response(array(
+                'success' => false,
+                'message' => __('داده‌های وارد شده نامعتبر است', 'tabesh')
+            ), 400);
+        }
+
+        if (!is_array($sections)) {
+            $sections = array();
+        }
+
+        if (!in_array($mode, array('merge', 'replace'))) {
+            $mode = 'merge';
+        }
+
+        try {
+            $result = $this->export_import->import($data, $sections, $mode);
+            
+            return new WP_REST_Response($result, $result['success'] ? 200 : 500);
+
+        } catch (Exception $e) {
+            return new WP_REST_Response(array(
+                'success' => false,
+                'message' => $e->getMessage()
+            ), 500);
+        }
+    }
+
+    /**
+     * REST API: Validate import file
+     *
+     * @param WP_REST_Request $request
+     * @return WP_REST_Response
+     */
+    public function rest_validate_import($request) {
+        $data = $request->get_param('data');
+
+        if (!is_array($data)) {
+            return new WP_REST_Response(array(
+                'success' => false,
+                'message' => __('داده‌های وارد شده نامعتبر است', 'tabesh')
+            ), 400);
+        }
+
+        try {
+            $preview = $this->export_import->get_import_preview($data);
+            
+            return new WP_REST_Response($preview, 200);
+
+        } catch (Exception $e) {
+            return new WP_REST_Response(array(
+                'valid' => false,
+                'message' => $e->getMessage()
+            ), 500);
+        }
+    }
+
+    /**
+     * REST API: Get export preview
+     *
+     * @param WP_REST_Request $request
+     * @return WP_REST_Response
+     */
+    public function rest_export_preview($request) {
+        $sections = $request->get_param('sections');
+        
+        if (!is_array($sections)) {
+            $sections = array();
+        }
+
+        try {
+            $preview = $this->export_import->get_export_preview($sections);
+            
+            return new WP_REST_Response(array(
+                'success' => true,
+                'preview' => $preview
+            ), 200);
+
+        } catch (Exception $e) {
+            return new WP_REST_Response(array(
+                'success' => false,
+                'message' => $e->getMessage()
+            ), 500);
         }
     }
 }

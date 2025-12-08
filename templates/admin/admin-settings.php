@@ -41,6 +41,7 @@ $admin = $tabesh->admin;
                 <a href="#tab-pricing" class="nav-tab">قیمت‌گذاری</a>
                 <a href="#tab-sms" class="nav-tab">پیامک</a>
                 <a href="#tab-staff-access" class="nav-tab">دسترسی کارمندان</a>
+                <a href="#tab-export-import" class="nav-tab">برونبری و درونریزی</a>
             </nav>
 
             <!-- General Settings -->
@@ -1157,6 +1158,114 @@ $admin = $tabesh->admin;
                 <!-- Hidden input to store selected user IDs -->
                 <input type="hidden" id="admin_order_form_allowed_users" name="admin_order_form_allowed_users" 
                        value="<?php echo esc_attr(implode(',', $admin_order_form_allowed_users)); ?>">
+            </div>
+
+            <!-- Export/Import Tab -->
+            <div id="tab-export-import" class="tabesh-tab-content">
+                <h2>برونبری و درونریزی</h2>
+
+                <div class="notice notice-info">
+                    <p><strong>ℹ️ راهنما:</strong></p>
+                    <ul style="margin-right: 20px;">
+                        <li>✅ از این بخش می‌توانید پشتیبان کامل از اطلاعات افزونه تهیه کنید</li>
+                        <li>📥 برونبری: بخش‌های مورد نظر را انتخاب کرده و دکمه برونبری را کلیک کنید</li>
+                        <li>📤 درونریزی: فایل پشتیبان را انتخاب کرده و حالت درونریزی را مشخص کنید</li>
+                        <li>🔀 حالت ادغام: داده‌های جدید را با داده‌های موجود ترکیب می‌کند</li>
+                        <li>🔄 حالت جایگزینی: داده‌های موجود را حذف کرده و فقط داده‌های جدید را وارد می‌کند</li>
+                        <li>⚠️ توجه: قبل از درونریزی با حالت جایگزینی، حتماً پشتیبان تهیه کنید</li>
+                    </ul>
+                </div>
+
+                <!-- Export Section -->
+                <div style="background: #fff; border: 1px solid #ccd0d4; padding: 20px; margin: 20px 0; border-radius: 4px;">
+                    <h3>📥 برونبری (Export)</h3>
+                    
+                    <p><strong>بخش‌های مورد نظر برای برونبری را انتخاب کنید:</strong></p>
+                    
+                    <div style="margin: 15px 0;">
+                        <label style="display: block; margin-bottom: 10px;">
+                            <input type="checkbox" id="export_all_sections" style="margin-left: 5px;">
+                            <strong>انتخاب همه</strong>
+                        </label>
+                        
+                        <?php
+                        $available_sections = $tabesh->export_import->get_available_sections();
+                        foreach ($available_sections as $key => $label) :
+                        ?>
+                        <label style="display: block; margin-bottom: 8px;">
+                            <input type="checkbox" class="export-section-checkbox" 
+                                   name="export_sections[]" 
+                                   value="<?php echo esc_attr($key); ?>" 
+                                   style="margin-left: 5px;">
+                            <?php echo esc_html($label); ?>
+                        </label>
+                        <?php endforeach; ?>
+                    </div>
+                    
+                    <div id="export-preview" style="margin: 15px 0; padding: 10px; background: #f5f5f5; border-radius: 4px; display: none;">
+                        <strong>پیش‌نمایش:</strong>
+                        <div id="export-preview-content" style="margin-top: 10px;"></div>
+                    </div>
+                    
+                    <div style="margin-top: 15px;">
+                        <button type="button" id="show-export-preview" class="button">
+                            👁️ نمایش پیش‌نمایش
+                        </button>
+                        <button type="button" id="export-data-btn" class="button button-primary">
+                            📥 برونبری داده‌ها
+                        </button>
+                        <span id="export-status" style="margin-right: 10px;"></span>
+                    </div>
+                </div>
+
+                <!-- Import Section -->
+                <div style="background: #fff; border: 1px solid #ccd0d4; padding: 20px; margin: 20px 0; border-radius: 4px;">
+                    <h3>📤 درونریزی (Import)</h3>
+                    
+                    <div style="margin: 15px 0;">
+                        <label for="import-file" style="display: block; margin-bottom: 10px;">
+                            <strong>فایل پشتیبان را انتخاب کنید:</strong>
+                        </label>
+                        <input type="file" id="import-file" accept=".json,application/json" 
+                               style="margin-bottom: 15px;">
+                    </div>
+                    
+                    <div id="import-preview" style="margin: 15px 0; padding: 10px; background: #f5f5f5; border-radius: 4px; display: none;">
+                        <strong>اطلاعات فایل:</strong>
+                        <div id="import-preview-content" style="margin-top: 10px;"></div>
+                        
+                        <div style="margin-top: 15px;">
+                            <p><strong>بخش‌های موجود در فایل - انتخاب کنید کدام‌ها درونریزی شوند:</strong></p>
+                            <label style="display: block; margin-bottom: 10px;">
+                                <input type="checkbox" id="import_all_sections" style="margin-left: 5px;">
+                                <strong>انتخاب همه</strong>
+                            </label>
+                            <div id="import-sections-list"></div>
+                        </div>
+                        
+                        <div style="margin-top: 15px;">
+                            <p><strong>حالت درونریزی:</strong></p>
+                            <label style="display: block; margin-bottom: 8px;">
+                                <input type="radio" name="import_mode" value="merge" checked style="margin-left: 5px;">
+                                ادغام با داده‌های موجود
+                            </label>
+                            <label style="display: block; margin-bottom: 8px;">
+                                <input type="radio" name="import_mode" value="replace" style="margin-left: 5px;">
+                                جایگزینی کامل (حذف داده‌های موجود)
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-top: 15px;">
+                        <button type="button" id="validate-import-btn" class="button">
+                            🔍 بررسی فایل
+                        </button>
+                        <button type="button" id="import-data-btn" class="button button-primary" disabled>
+                            📤 درونریزی داده‌ها
+                        </button>
+                        <span id="import-status" style="margin-right: 10px;"></span>
+                    </div>
+                </div>
             </div>
 
         <p class="submit">

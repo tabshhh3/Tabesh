@@ -514,19 +514,8 @@
             new TabeshFileManager();
         }
 
-        // Export settings
-        $('#export-settings').on('click', function(e) {
-            e.preventDefault();
-            // Implement export functionality
-            alert('قابلیت خروجی گرفتن از تنظیمات در نسخه بعدی اضافه خواهد شد');
-        });
-
-        // Import settings
-        $('#import-settings').on('click', function(e) {
-            e.preventDefault();
-            // Implement import functionality
-            alert('قابلیت وارد کردن تنظیمات در نسخه بعدی اضافه خواهد شد');
-        });
+        // Export/Import functionality
+        initExportImport();
     });
 
     /**
@@ -898,6 +887,301 @@
                 }
             });
         }
+    }
+
+    /**
+     * Initialize Export/Import functionality
+     */
+    function initExportImport() {
+        let importFileData = null;
+
+        // Export: Select all checkbox
+        $('#export_all_sections').on('change', function() {
+            $('.export-section-checkbox').prop('checked', $(this).prop('checked'));
+        });
+
+        // Update "select all" when individual checkboxes change
+        $(document).on('change', '.export-section-checkbox', function() {
+            const total = $('.export-section-checkbox').length;
+            const checked = $('.export-section-checkbox:checked').length;
+            $('#export_all_sections').prop('checked', total === checked);
+        });
+
+        // Show export preview
+        $('#show-export-preview').on('click', function() {
+            const sections = [];
+            $('.export-section-checkbox:checked').each(function() {
+                sections.push($(this).val());
+            });
+
+            if (sections.length === 0) {
+                alert('لطفاً حداقل یک بخش را انتخاب کنید');
+                return;
+            }
+
+            const $preview = $('#export-preview');
+            const $content = $('#export-preview-content');
+            
+            $content.html('<p>در حال بارگذاری...</p>');
+            $preview.show();
+
+            $.ajax({
+                url: buildRestUrl(tabeshAdmin.restUrl, 'tabesh/v1/export/preview'),
+                method: 'GET',
+                data: { sections: sections },
+                beforeSend: function(xhr) {
+                    xhr.setRequestHeader('X-WP-Nonce', tabeshAdmin.nonce);
+                },
+                success: function(response) {
+                    if (response.success && response.preview) {
+                        let html = '<ul style="list-style: none; padding: 0;">';
+                        $.each(response.preview, function(key, data) {
+                            html += '<li style="padding: 5px 0;">✓ <strong>' + data.label + '</strong>: ' + data.count + ' رکورد</li>';
+                        });
+                        html += '</ul>';
+                        $content.html(html);
+                    } else {
+                        $content.html('<p style="color: red;">خطا در دریافت پیش‌نمایش</p>');
+                    }
+                },
+                error: function() {
+                    $content.html('<p style="color: red;">خطا در ارتباط با سرور</p>');
+                }
+            });
+        });
+
+        // Export data
+        $('#export-data-btn').on('click', function() {
+            const sections = [];
+            $('.export-section-checkbox:checked').each(function() {
+                sections.push($(this).val());
+            });
+
+            if (sections.length === 0) {
+                alert('لطفاً حداقل یک بخش را انتخاب کنید');
+                return;
+            }
+
+            const $btn = $(this);
+            const $status = $('#export-status');
+            
+            $btn.prop('disabled', true);
+            $status.html('<span style="color: #0073aa;">⏳ در حال برونبری...</span>');
+
+            $.ajax({
+                url: buildRestUrl(tabeshAdmin.restUrl, 'tabesh/v1/export'),
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ sections: sections }),
+                beforeSend: function(xhr) {
+                    xhr.setRequestHeader('X-WP-Nonce', tabeshAdmin.nonce);
+                },
+                success: function(response) {
+                    if (response.success && response.data) {
+                        // Create download
+                        const dataStr = JSON.stringify(response.data, null, 2);
+                        const dataBlob = new Blob([dataStr], { type: 'application/json' });
+                        const url = URL.createObjectURL(dataBlob);
+                        const link = document.createElement('a');
+                        const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+                        link.href = url;
+                        link.download = 'tabesh-backup-' + timestamp + '.json';
+                        link.click();
+                        URL.revokeObjectURL(url);
+                        
+                        $status.html('<span style="color: #46b450;">✓ برونبری با موفقیت انجام شد</span>');
+                        setTimeout(() => $status.html(''), 3000);
+                    } else {
+                        $status.html('<span style="color: #dc3232;">✗ خطا در برونبری</span>');
+                    }
+                    $btn.prop('disabled', false);
+                },
+                error: function(xhr) {
+                    let msg = 'خطا در ارتباط با سرور';
+                    if (xhr.responseJSON && xhr.responseJSON.message) {
+                        msg = xhr.responseJSON.message;
+                    }
+                    $status.html('<span style="color: #dc3232;">✗ ' + msg + '</span>');
+                    $btn.prop('disabled', false);
+                }
+            });
+        });
+
+        // Import: Select all checkbox
+        $('#import_all_sections').on('change', function() {
+            $('.import-section-checkbox').prop('checked', $(this).prop('checked'));
+        });
+
+        // Update "select all" when individual import checkboxes change
+        $(document).on('change', '.import-section-checkbox', function() {
+            const total = $('.import-section-checkbox').length;
+            const checked = $('.import-section-checkbox:checked').length;
+            $('#import_all_sections').prop('checked', total === checked);
+        });
+
+        // Validate import file
+        $('#validate-import-btn').on('click', function() {
+            const fileInput = document.getElementById('import-file');
+            const file = fileInput.files[0];
+
+            if (!file) {
+                alert('لطفاً ابتدا یک فایل انتخاب کنید');
+                return;
+            }
+
+            if (!file.name.endsWith('.json')) {
+                alert('فقط فایل‌های JSON مجاز هستند');
+                return;
+            }
+
+            const $btn = $(this);
+            const $status = $('#import-status');
+            const $preview = $('#import-preview');
+            const $content = $('#import-preview-content');
+            
+            $btn.prop('disabled', true);
+            $status.html('<span style="color: #0073aa;">⏳ در حال بررسی فایل...</span>');
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    importFileData = data;
+
+                    // Send to server for validation
+                    $.ajax({
+                        url: buildRestUrl(tabeshAdmin.restUrl, 'tabesh/v1/import/validate'),
+                        method: 'POST',
+                        contentType: 'application/json',
+                        data: JSON.stringify({ data: data }),
+                        beforeSend: function(xhr) {
+                            xhr.setRequestHeader('X-WP-Nonce', tabeshAdmin.nonce);
+                        },
+                        success: function(response) {
+                            if (response.valid) {
+                                let html = '<ul style="list-style: none; padding: 0;">';
+                                html += '<li><strong>نسخه:</strong> ' + response.version + '</li>';
+                                html += '<li><strong>تاریخ برونبری:</strong> ' + response.export_date + '</li>';
+                                if (response.site_url) {
+                                    html += '<li><strong>سایت مبدا:</strong> ' + response.site_url + '</li>';
+                                }
+                                html += '</ul>';
+                                $content.html(html);
+
+                                // Show sections
+                                let sectionsHtml = '';
+                                $.each(response.sections, function(key, data) {
+                                    sectionsHtml += '<label style="display: block; margin-bottom: 8px;">';
+                                    sectionsHtml += '<input type="checkbox" class="import-section-checkbox" ';
+                                    sectionsHtml += 'value="' + key + '" checked style="margin-left: 5px;">';
+                                    sectionsHtml += data.label + ' (' + data.count + ' رکورد)';
+                                    sectionsHtml += '</label>';
+                                });
+                                $('#import-sections-list').html(sectionsHtml);
+
+                                $preview.show();
+                                $('#import-data-btn').prop('disabled', false);
+                                $status.html('<span style="color: #46b450;">✓ فایل معتبر است</span>');
+                            } else {
+                                $status.html('<span style="color: #dc3232;">✗ ' + response.message + '</span>');
+                                $('#import-data-btn').prop('disabled', true);
+                            }
+                            $btn.prop('disabled', false);
+                        },
+                        error: function(xhr) {
+                            let msg = 'خطا در بررسی فایل';
+                            if (xhr.responseJSON && xhr.responseJSON.message) {
+                                msg = xhr.responseJSON.message;
+                            }
+                            $status.html('<span style="color: #dc3232;">✗ ' + msg + '</span>');
+                            $btn.prop('disabled', false);
+                        }
+                    });
+
+                } catch (err) {
+                    $status.html('<span style="color: #dc3232;">✗ فایل JSON نامعتبر است</span>');
+                    $btn.prop('disabled', false);
+                }
+            };
+            reader.readAsText(file);
+        });
+
+        // Import data
+        $('#import-data-btn').on('click', function() {
+            if (!importFileData) {
+                alert('لطفاً ابتدا فایل را بررسی کنید');
+                return;
+            }
+
+            const sections = [];
+            $('.import-section-checkbox:checked').each(function() {
+                sections.push($(this).val());
+            });
+
+            if (sections.length === 0) {
+                alert('لطفاً حداقل یک بخش را انتخاب کنید');
+                return;
+            }
+
+            const mode = $('input[name="import_mode"]:checked').val();
+
+            // Confirm if replace mode
+            if (mode === 'replace') {
+                if (!confirm('⚠️ توجه: در حالت جایگزینی، تمام داده‌های موجود در بخش‌های انتخاب شده حذف و با داده‌های جدید جایگزین می‌شوند.\n\nآیا مطمئن هستید؟')) {
+                    return;
+                }
+            }
+
+            const $btn = $(this);
+            const $status = $('#import-status');
+            
+            $btn.prop('disabled', true);
+            $status.html('<span style="color: #0073aa;">⏳ در حال درونریزی...</span>');
+
+            $.ajax({
+                url: buildRestUrl(tabeshAdmin.restUrl, 'tabesh/v1/import'),
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    data: importFileData,
+                    sections: sections,
+                    mode: mode
+                }),
+                beforeSend: function(xhr) {
+                    xhr.setRequestHeader('X-WP-Nonce', tabeshAdmin.nonce);
+                },
+                success: function(response) {
+                    if (response.success) {
+                        let msg = response.message;
+                        if (response.results) {
+                            msg += '<ul style="list-style: none; padding: 0; margin-top: 10px;">';
+                            $.each(response.results, function(key, result) {
+                                msg += '<li>• ' + result.message + '</li>';
+                            });
+                            msg += '</ul>';
+                        }
+                        $status.html('<span style="color: #46b450;">✓ ' + msg + '</span>');
+                        
+                        // Clear file input and reset
+                        $('#import-file').val('');
+                        $('#import-preview').hide();
+                        importFileData = null;
+                        $btn.prop('disabled', true);
+                    } else {
+                        $status.html('<span style="color: #dc3232;">✗ ' + response.message + '</span>');
+                        $btn.prop('disabled', false);
+                    }
+                },
+                error: function(xhr) {
+                    let msg = 'خطا در درونریزی';
+                    if (xhr.responseJSON && xhr.responseJSON.message) {
+                        msg = xhr.responseJSON.message;
+                    }
+                    $status.html('<span style="color: #dc3232;">✗ ' + msg + '</span>');
+                    $btn.prop('disabled', false);
+                }
+            });
+        });
     }
 
 })(jQuery);
