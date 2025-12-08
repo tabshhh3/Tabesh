@@ -1196,6 +1196,43 @@ final class Tabesh {
             'permission_callback' => array($this, 'can_manage_admin')
         ));
 
+        // Cleanup/Delete routes
+        register_rest_route(TABESH_REST_NAMESPACE, '/cleanup/preview', array(
+            'methods' => 'GET',
+            'callback' => array($this, 'rest_cleanup_preview'),
+            'permission_callback' => array($this, 'can_manage_admin')
+        ));
+
+        register_rest_route(TABESH_REST_NAMESPACE, '/cleanup/orders', array(
+            'methods' => 'POST',
+            'callback' => array($this, 'rest_cleanup_orders'),
+            'permission_callback' => array($this, 'can_manage_admin')
+        ));
+
+        register_rest_route(TABESH_REST_NAMESPACE, '/cleanup/files', array(
+            'methods' => 'POST',
+            'callback' => array($this, 'rest_cleanup_files'),
+            'permission_callback' => array($this, 'can_manage_admin')
+        ));
+
+        register_rest_route(TABESH_REST_NAMESPACE, '/cleanup/logs', array(
+            'methods' => 'POST',
+            'callback' => array($this, 'rest_cleanup_logs'),
+            'permission_callback' => array($this, 'can_manage_admin')
+        ));
+
+        register_rest_route(TABESH_REST_NAMESPACE, '/cleanup/reset-settings', array(
+            'methods' => 'POST',
+            'callback' => array($this, 'rest_reset_settings'),
+            'permission_callback' => array($this, 'can_manage_admin')
+        ));
+
+        register_rest_route(TABESH_REST_NAMESPACE, '/cleanup/factory-reset', array(
+            'methods' => 'POST',
+            'callback' => array($this, 'rest_factory_reset'),
+            'permission_callback' => array($this, 'can_manage_admin')
+        ));
+
         // Admin order creator routes
         register_rest_route(TABESH_REST_NAMESPACE, '/admin/search-users-live', array(
             'methods' => 'GET',
@@ -2181,6 +2218,154 @@ final class Tabesh {
                 'success' => true,
                 'preview' => $preview
             ), 200);
+
+        } catch (Exception $e) {
+            return new WP_REST_Response(array(
+                'success' => false,
+                'message' => $e->getMessage()
+            ), 500);
+        }
+    }
+
+    /**
+     * REST API: Get cleanup preview
+     *
+     * @param WP_REST_Request $request
+     * @return WP_REST_Response
+     */
+    public function rest_cleanup_preview($request) {
+        try {
+            $preview = $this->export_import->get_cleanup_preview();
+            
+            return new WP_REST_Response(array(
+                'success' => true,
+                'preview' => $preview
+            ), 200);
+
+        } catch (Exception $e) {
+            return new WP_REST_Response(array(
+                'success' => false,
+                'message' => $e->getMessage()
+            ), 500);
+        }
+    }
+
+    /**
+     * REST API: Delete orders
+     *
+     * @param WP_REST_Request $request
+     * @return WP_REST_Response
+     */
+    public function rest_cleanup_orders($request) {
+        $options = array(
+            'all' => $request->get_param('all') ? true : false,
+            'archived' => $request->get_param('archived') ? true : false,
+            'user_id' => intval($request->get_param('user_id') ?: 0),
+            'older_than' => intval($request->get_param('older_than') ?: 0),
+        );
+
+        try {
+            $result = $this->export_import->delete_orders($options);
+            
+            return new WP_REST_Response($result, 200);
+
+        } catch (Exception $e) {
+            return new WP_REST_Response(array(
+                'success' => false,
+                'message' => $e->getMessage()
+            ), 500);
+        }
+    }
+
+    /**
+     * REST API: Delete files
+     *
+     * @param WP_REST_Request $request
+     * @return WP_REST_Response
+     */
+    public function rest_cleanup_files($request) {
+        $options = array(
+            'database' => $request->get_param('database') ? true : false,
+            'physical' => $request->get_param('physical') ? true : false,
+            'orphans' => $request->get_param('orphans') ? true : false,
+        );
+
+        try {
+            $result = $this->export_import->delete_files($options);
+            
+            return new WP_REST_Response($result, 200);
+
+        } catch (Exception $e) {
+            return new WP_REST_Response(array(
+                'success' => false,
+                'message' => $e->getMessage()
+            ), 500);
+        }
+    }
+
+    /**
+     * REST API: Delete logs
+     *
+     * @param WP_REST_Request $request
+     * @return WP_REST_Response
+     */
+    public function rest_cleanup_logs($request) {
+        $options = array(
+            'all' => $request->get_param('all') ? true : false,
+            'older_than' => intval($request->get_param('older_than') ?: 0),
+            'type' => sanitize_text_field($request->get_param('type') ?: 'all'),
+        );
+
+        try {
+            $result = $this->export_import->delete_logs($options);
+            
+            return new WP_REST_Response($result, 200);
+
+        } catch (Exception $e) {
+            return new WP_REST_Response(array(
+                'success' => false,
+                'message' => $e->getMessage()
+            ), 500);
+        }
+    }
+
+    /**
+     * REST API: Reset settings to default
+     *
+     * @param WP_REST_Request $request
+     * @return WP_REST_Response
+     */
+    public function rest_reset_settings($request) {
+        try {
+            $result = $this->export_import->reset_settings();
+            
+            return new WP_REST_Response($result, 200);
+
+        } catch (Exception $e) {
+            return new WP_REST_Response(array(
+                'success' => false,
+                'message' => $e->getMessage()
+            ), 500);
+        }
+    }
+
+    /**
+     * REST API: Factory reset (delete everything)
+     *
+     * @param WP_REST_Request $request
+     * @return WP_REST_Response
+     */
+    public function rest_factory_reset($request) {
+        $confirm_key = sanitize_text_field($request->get_param('confirm_key'));
+
+        try {
+            $result = $this->export_import->factory_reset($confirm_key);
+            
+            if (!$result['success']) {
+                return new WP_REST_Response($result, 400);
+            }
+            
+            return new WP_REST_Response($result, 200);
 
         } catch (Exception $e) {
             return new WP_REST_Response(array(

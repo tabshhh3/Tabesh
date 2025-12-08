@@ -801,4 +801,646 @@ class Tabesh_Export_Import {
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		return (int) $wpdb->get_var( "SELECT COUNT(DISTINCT user_id) FROM {$order_table_escaped}" );
 	}
+
+	// ========================================================================
+	// CLEANUP AND DELETION METHODS
+	// ========================================================================
+
+	/**
+	 * Get preview of data to be cleaned up
+	 *
+	 * @return array Preview data with counts
+	 */
+	public function get_cleanup_preview() {
+		global $wpdb;
+
+		$preview = array();
+
+		// Orders count
+		$orders_table = $wpdb->prefix . 'tabesh_orders';
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$preview['orders'] = array(
+			'total'    => (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$orders_table}" ),
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+			'archived' => (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$orders_table} WHERE status = %s", 'archived' ) ),
+		);
+
+		// Files count
+		$files_table = $wpdb->prefix . 'tabesh_files';
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$preview['files'] = array(
+			'records' => (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$files_table}" ),
+		);
+
+		// File versions count
+		$versions_table = $wpdb->prefix . 'tabesh_file_versions';
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$preview['file_versions'] = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$versions_table}" );
+
+		// Logs count
+		$logs_table = $wpdb->prefix . 'tabesh_logs';
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$preview['logs'] = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$logs_table}" );
+
+		// Security logs count
+		$security_logs_table = $wpdb->prefix . 'tabesh_security_logs';
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$preview['security_logs'] = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$security_logs_table}" );
+
+		// Upload tasks count
+		$tasks_table = $wpdb->prefix . 'tabesh_upload_tasks';
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$preview['upload_tasks'] = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$tasks_table}" );
+
+		// Physical files check
+		$upload_dir = $this->get_upload_directory();
+		$preview['physical_files'] = $this->count_physical_files( $upload_dir );
+
+		return $preview;
+	}
+
+	/**
+	 * Delete orders based on options
+	 *
+	 * @param array $options Deletion options.
+	 * @return array Result with count and message
+	 */
+	public function delete_orders( $options = array() ) {
+		global $wpdb;
+
+		$defaults = array(
+			'all'         => false,
+			'archived'    => false,
+			'user_id'     => 0,
+			'older_than'  => 0, // Days.
+		);
+
+		$options      = wp_parse_args( $options, $defaults );
+		$orders_table = $wpdb->prefix . 'tabesh_orders';
+		$where_parts  = array();
+		$where_values = array();
+
+		// Build WHERE clause based on options
+		if ( $options['archived'] && ! $options['all'] ) {
+			$where_parts[]  = 'status = %s';
+			$where_values[] = 'archived';
+		}
+
+		if ( $options['user_id'] > 0 ) {
+			$where_parts[]  = 'user_id = %d';
+			$where_values[] = $options['user_id'];
+		}
+
+		if ( $options['older_than'] > 0 ) {
+			$where_parts[]  = 'created_at < DATE_SUB(NOW(), INTERVAL %d DAY)';
+			$where_values[] = $options['older_than'];
+		}
+
+		// Build final query
+		$where_clause = '';
+		if ( ! empty( $where_parts ) ) {
+			$where_clause = 'WHERE ' . implode( ' AND ', $where_parts );
+		}
+
+		$query = "DELETE FROM {$orders_table} {$where_clause}";
+
+		if ( ! empty( $where_values ) ) {
+			$query = $wpdb->prepare( $query, $where_values );
+		}
+
+		// Execute deletion
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared
+		$deleted = $wpdb->query( $query );
+
+		// Log the action
+		$this->log_cleanup_action( 'delete_orders', $options, $deleted );
+
+		return array(
+			'success' => true,
+			'deleted' => $deleted,
+			'message' => sprintf( '%d سفارش حذف شد', $deleted ),
+		);
+	}
+
+	/**
+	 * Delete files based on options
+	 *
+	 * @param array $options Deletion options.
+	 * @return array Result with count and message
+	 */
+	public function delete_files( $options = array() ) {
+		global $wpdb;
+
+		$defaults = array(
+			'database'  => false,
+			'physical'  => false,
+			'orphans'   => false,
+		);
+
+		$options = wp_parse_args( $options, $defaults );
+		$deleted = array(
+			'database_records' => 0,
+			'physical_files'   => 0,
+		);
+
+		$files_table = $wpdb->prefix . 'tabesh_files';
+
+		if ( $options['orphans'] ) {
+			$result  = $this->delete_orphan_files();
+			$deleted = $result['deleted'];
+		} else {
+			// Get file paths before deletion if we need to delete physical files
+			if ( $options['physical'] ) {
+				// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+				$file_paths = $wpdb->get_col( "SELECT file_path FROM {$files_table}" );
+				$deleted['physical_files'] = $this->delete_physical_files( $file_paths );
+			}
+
+			// Delete database records
+			if ( $options['database'] ) {
+				// Also delete related data
+				$versions_table = $wpdb->prefix . 'tabesh_file_versions';
+				$comments_table = $wpdb->prefix . 'tabesh_file_comments';
+
+				// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+				$wpdb->query( "DELETE FROM {$versions_table}" );
+				// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+				$wpdb->query( "DELETE FROM {$comments_table}" );
+				// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+				$deleted['database_records'] = $wpdb->query( "DELETE FROM {$files_table}" );
+			}
+		}
+
+		// Log the action
+		$this->log_cleanup_action( 'delete_files', $options, $deleted );
+
+		return array(
+			'success' => true,
+			'deleted' => $deleted,
+			'message' => sprintf(
+				'%d رکورد از دیتابیس و %d فایل فیزیکی حذف شد',
+				$deleted['database_records'],
+				$deleted['physical_files']
+			),
+		);
+	}
+
+	/**
+	 * Delete orphan files (files without database records or vice versa)
+	 *
+	 * @return array Result with counts
+	 */
+	public function delete_orphan_files() {
+		global $wpdb;
+
+		$deleted = array(
+			'database_records' => 0,
+			'physical_files'   => 0,
+		);
+
+		$files_table = $wpdb->prefix . 'tabesh_files';
+		$upload_dir  = $this->get_upload_directory();
+
+		// Find database records without physical files
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$db_files = $wpdb->get_results( "SELECT id, file_path FROM {$files_table}", ARRAY_A );
+
+		$orphan_records = array();
+		foreach ( $db_files as $file ) {
+			$full_path = $upload_dir . $file['file_path'];
+			if ( ! file_exists( $full_path ) ) {
+				$orphan_records[] = $file['id'];
+			}
+		}
+
+		// Delete orphan database records
+		if ( ! empty( $orphan_records ) ) {
+			$placeholders = implode( ',', array_fill( 0, count( $orphan_records ), '%d' ) );
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$deleted['database_records'] = $wpdb->query(
+				$wpdb->prepare(
+					"DELETE FROM {$files_table} WHERE id IN ($placeholders)",
+					$orphan_records
+				)
+			);
+		}
+
+		// Find physical files without database records
+		if ( is_dir( $upload_dir ) ) {
+			$upload_dir_real = realpath( $upload_dir );
+			if ( false === $upload_dir_real ) {
+				return array(
+					'success' => false,
+					'message' => 'خطا در دسترسی به پوشه آپلود',
+				);
+			}
+
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+			$db_paths = $wpdb->get_col( "SELECT file_path FROM {$files_table}" );
+			$db_paths = array_flip( $db_paths );
+
+			try {
+				$iterator = new RecursiveIteratorIterator(
+					new RecursiveDirectoryIterator( $upload_dir_real, RecursiveDirectoryIterator::SKIP_DOTS ),
+					RecursiveIteratorIterator::SELF_FIRST
+				);
+				// Limit recursion depth for performance.
+				$iterator->setMaxDepth( 10 );
+
+				foreach ( $iterator as $file ) {
+					if ( $file->isFile() ) {
+						$file_path      = $file->getPathname();
+						$file_path_real = realpath( $file_path );
+
+						// Validate path is within upload directory.
+						if ( false === $file_path_real || strpos( $file_path_real, $upload_dir_real ) !== 0 ) {
+							continue;
+						}
+
+						$relative_path = str_replace( $upload_dir, '', $file_path );
+						if ( ! isset( $db_paths[ $relative_path ] ) ) {
+							// This is an orphan physical file.
+							if ( wp_delete_file( $file_path_real ) ) {
+								++$deleted['physical_files'];
+							}
+						}
+					}
+				}
+			} catch ( Exception $e ) {
+				error_log( 'Tabesh: Error scanning for orphan files: ' . $e->getMessage() );
+			}
+		}
+
+		return array(
+			'success' => true,
+			'deleted' => $deleted,
+			'message' => sprintf(
+				'%d رکورد یتیم و %d فایل یتیم حذف شد',
+				$deleted['database_records'],
+				$deleted['physical_files']
+			),
+		);
+	}
+
+	/**
+	 * Delete logs based on options
+	 *
+	 * @param array $options Deletion options.
+	 * @return array Result with count and message
+	 */
+	public function delete_logs( $options = array() ) {
+		global $wpdb;
+
+		$defaults = array(
+			'all'         => false,
+			'older_than'  => 0, // Days.
+			'type'        => '', // 'regular' or 'security' or 'all'.
+		);
+
+		$options = wp_parse_args( $options, $defaults );
+		$deleted = 0;
+
+		if ( empty( $options['type'] ) || $options['type'] === 'regular' || $options['type'] === 'all' ) {
+			$logs_table = $wpdb->prefix . 'tabesh_logs';
+
+			if ( $options['older_than'] > 0 ) {
+				// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+				$deleted += $wpdb->query(
+					$wpdb->prepare(
+						"DELETE FROM {$logs_table} WHERE created_at < DATE_SUB(NOW(), INTERVAL %d DAY)",
+						$options['older_than']
+					)
+				);
+			} else {
+				// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+				$deleted += $wpdb->query( "DELETE FROM {$logs_table}" );
+			}
+		}
+
+		if ( empty( $options['type'] ) || $options['type'] === 'security' || $options['type'] === 'all' ) {
+			$security_logs_table = $wpdb->prefix . 'tabesh_security_logs';
+
+			if ( $options['older_than'] > 0 ) {
+				// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+				$deleted += $wpdb->query(
+					$wpdb->prepare(
+						"DELETE FROM {$security_logs_table} WHERE created_at < DATE_SUB(NOW(), INTERVAL %d DAY)",
+						$options['older_than']
+					)
+				);
+			} else {
+				// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+				$deleted += $wpdb->query( "DELETE FROM {$security_logs_table}" );
+			}
+		}
+
+		// Log the action (not in security logs as we might be deleting them)
+		$this->log_cleanup_action( 'delete_logs', $options, $deleted );
+
+		return array(
+			'success' => true,
+			'deleted' => $deleted,
+			'message' => sprintf( '%d رکورد لاگ حذف شد', $deleted ),
+		);
+	}
+
+	/**
+	 * Reset settings to default values
+	 *
+	 * @return array Result with message
+	 */
+	public function reset_settings() {
+		global $wpdb;
+
+		$settings_table = $wpdb->prefix . 'tabesh_settings';
+
+		// Delete all current settings
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$deleted = $wpdb->query( "DELETE FROM {$settings_table}" );
+
+		// Settings will be recreated with defaults on next access
+		// Clear any cached settings
+		wp_cache_delete( 'tabesh_settings', 'tabesh' );
+
+		// Log the action
+		$this->log_cleanup_action( 'reset_settings', array(), $deleted );
+
+		return array(
+			'success' => true,
+			'deleted' => $deleted,
+			'message' => 'تنظیمات به حالت پیش‌فرض بازگردانی شد',
+		);
+	}
+
+	/**
+	 * Factory reset - delete everything
+	 *
+	 * @param string $confirm_key Confirmation key (must be 'RESET' to proceed).
+	 * @return array Result with message
+	 */
+	public function factory_reset( $confirm_key ) {
+		if ( $confirm_key !== 'RESET' ) {
+			return array(
+				'success' => false,
+				'message' => 'کلید تأیید نادرست است. برای ریست کامل باید کلمه RESET را وارد کنید.',
+			);
+		}
+
+		global $wpdb;
+
+		$deleted = array();
+
+		// Delete all orders
+		$deleted['orders'] = $this->delete_orders( array( 'all' => true ) );
+
+		// Delete all files
+		$deleted['files'] = $this->delete_files(
+			array(
+				'database' => true,
+				'physical' => true,
+			)
+		);
+
+		// Delete all logs
+		$deleted['logs'] = $this->delete_logs( array( 'type' => 'all' ) );
+
+		// Delete upload tasks
+		$tasks_table = $wpdb->prefix . 'tabesh_upload_tasks';
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$deleted['upload_tasks'] = $wpdb->query( "DELETE FROM {$tasks_table}" );
+
+		// Delete download tokens
+		$tokens_table = $wpdb->prefix . 'tabesh_download_tokens';
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$deleted['download_tokens'] = $wpdb->query( "DELETE FROM {$tokens_table}" );
+
+		// Delete document metadata
+		$metadata_table = $wpdb->prefix . 'tabesh_document_metadata';
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$deleted['document_metadata'] = $wpdb->query( "DELETE FROM {$metadata_table}" );
+
+		// Reset settings last
+		$deleted['settings'] = $this->reset_settings();
+
+		// Log the factory reset
+		$this->log_cleanup_action( 'factory_reset', array( 'confirm_key' => $confirm_key ), $deleted );
+
+		return array(
+			'success' => true,
+			'deleted' => $deleted,
+			'message' => 'ریست کامل انجام شد. تمام داده‌های افزونه حذف شدند.',
+		);
+	}
+
+	/**
+	 * Delete user data (GDPR compliance)
+	 *
+	 * @param int $user_id User ID.
+	 * @return array Result with counts
+	 */
+	public function delete_user_data( $user_id ) {
+		global $wpdb;
+
+		$deleted = array();
+
+		// Delete user orders
+		$deleted['orders'] = $this->delete_orders( array( 'user_id' => $user_id ) );
+
+		// Delete user files
+		$files_table = $wpdb->prefix . 'tabesh_files';
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$file_paths = $wpdb->get_col(
+			$wpdb->prepare(
+				"SELECT file_path FROM {$files_table} WHERE user_id = %d",
+				$user_id
+			)
+		);
+
+		// Delete physical files
+		$deleted['physical_files'] = $this->delete_physical_files( $file_paths );
+
+		// Delete database records
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$deleted['file_records'] = $wpdb->query(
+			$wpdb->prepare(
+				"DELETE FROM {$files_table} WHERE user_id = %d",
+				$user_id
+			)
+		);
+
+		// Delete user logs
+		$logs_table = $wpdb->prefix . 'tabesh_logs';
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$deleted['logs'] = $wpdb->query(
+			$wpdb->prepare(
+				"DELETE FROM {$logs_table} WHERE user_id = %d",
+				$user_id
+			)
+		);
+
+		// Log the action
+		$this->log_cleanup_action( 'delete_user_data', array( 'user_id' => $user_id ), $deleted );
+
+		return array(
+			'success' => true,
+			'deleted' => $deleted,
+			'message' => sprintf( 'تمام داده‌های کاربر %d حذف شد', $user_id ),
+		);
+	}
+
+	// ========================================================================
+	// HELPER METHODS
+	// ========================================================================
+
+	/**
+	 * Get upload directory path
+	 *
+	 * @return string Upload directory path
+	 */
+	private function get_upload_directory() {
+		$upload_dir = wp_upload_dir();
+		// Try tabesh-files first (used by file-security), fallback to plugin-files
+		$tabesh_dir = $upload_dir['basedir'] . '/tabesh-files/';
+		if ( is_dir( $tabesh_dir ) ) {
+			return $tabesh_dir;
+		}
+		return $upload_dir['basedir'] . '/plugin-files/';
+	}
+
+	/**
+	 * Count physical files in directory
+	 *
+	 * @param string $directory Directory path.
+	 * @return int File count
+	 */
+	private function count_physical_files( $directory ) {
+		$count = 0;
+		if ( ! is_dir( $directory ) ) {
+			return $count;
+		}
+
+		try {
+			$iterator = new RecursiveIteratorIterator(
+				new RecursiveDirectoryIterator( $directory, RecursiveDirectoryIterator::SKIP_DOTS ),
+				RecursiveIteratorIterator::SELF_FIRST
+			);
+			// Limit recursion depth for performance.
+			$iterator->setMaxDepth( 10 );
+
+			foreach ( $iterator as $file ) {
+				if ( $file->isFile() ) {
+					++$count;
+				}
+			}
+		} catch ( Exception $e ) {
+			// Log error but don't fail - return count of 0.
+			error_log( 'Tabesh: Error counting files in ' . $directory . ': ' . $e->getMessage() );
+		}
+
+		return $count;
+	}
+
+	/**
+	 * Delete physical files
+	 *
+	 * @param array $file_paths Array of relative file paths.
+	 * @return int Number of files deleted
+	 */
+	private function delete_physical_files( $file_paths ) {
+		$deleted    = 0;
+		$upload_dir = $this->get_upload_directory();
+		$upload_dir = realpath( $upload_dir );
+
+		if ( false === $upload_dir ) {
+			return 0;
+		}
+
+		foreach ( $file_paths as $file_path ) {
+			// Validate path to prevent path traversal attacks.
+			$full_path = $upload_dir . '/' . ltrim( $file_path, '/' );
+			$real_path = realpath( $full_path );
+
+			// Ensure the resolved path is within the upload directory.
+			if ( false === $real_path || strpos( $real_path, $upload_dir ) !== 0 ) {
+				error_log( 'Tabesh: Attempted to delete file outside upload directory: ' . $file_path );
+				continue;
+			}
+
+			if ( file_exists( $real_path ) && wp_delete_file( $real_path ) ) {
+				++$deleted;
+			}
+		}
+
+		return $deleted;
+	}
+
+	/**
+	 * Log cleanup action to security logs
+	 *
+	 * @param string $action Action name.
+	 * @param array  $options Options used.
+	 * @param mixed  $result Result of the action.
+	 * @return void
+	 */
+	private function log_cleanup_action( $action, $options, $result ) {
+		global $wpdb;
+
+		$security_logs_table = $wpdb->prefix . 'tabesh_security_logs';
+		$user                = wp_get_current_user();
+
+		// Get real client IP, considering proxies and load balancers.
+		$ip_address = $this->get_client_ip();
+
+		$log_data = array(
+			'user_id'     => $user->ID,
+			'action'      => 'cleanup_' . $action,
+			'description' => wp_json_encode(
+				array(
+					'options' => $options,
+					'result'  => $result,
+				)
+			),
+			'ip_address'  => $ip_address,
+			'created_at'  => current_time( 'mysql' ),
+		);
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+		$wpdb->insert( $security_logs_table, $log_data );
+	}
+
+	/**
+	 * Get client IP address, considering proxies
+	 *
+	 * @return string Client IP address
+	 */
+	private function get_client_ip() {
+		$ip_address = '';
+
+		// Check for proxy headers in order of preference.
+		$headers = array(
+			'HTTP_CF_CONNECTING_IP', // CloudFlare
+			'HTTP_X_FORWARDED_FOR',  // Standard proxy header
+			'HTTP_X_REAL_IP',        // Nginx proxy
+			'REMOTE_ADDR',           // Direct connection
+		);
+
+		foreach ( $headers as $header ) {
+			if ( ! empty( $_SERVER[ $header ] ) ) {
+				$ip_address = sanitize_text_field( wp_unslash( $_SERVER[ $header ] ) );
+
+				// If X-Forwarded-For contains multiple IPs, get the first one.
+				if ( strpos( $ip_address, ',' ) !== false ) {
+					$ips        = explode( ',', $ip_address );
+					$ip_address = trim( $ips[0] );
+				}
+
+				// Validate IP address format.
+				if ( filter_var( $ip_address, FILTER_VALIDATE_IP ) ) {
+					break;
+				}
+			}
+		}
+
+		return $ip_address;
+	}
 }
