@@ -1027,24 +1027,47 @@ class Tabesh_Export_Import {
 
 		// Find physical files without database records
 		if ( is_dir( $upload_dir ) ) {
+			$upload_dir_real = realpath( $upload_dir );
+			if ( false === $upload_dir_real ) {
+				return array(
+					'success' => false,
+					'message' => 'خطا در دسترسی به پوشه آپلود',
+				);
+			}
+
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 			$db_paths = $wpdb->get_col( "SELECT file_path FROM {$files_table}" );
 			$db_paths = array_flip( $db_paths );
 
-			$iterator = new RecursiveIteratorIterator(
-				new RecursiveDirectoryIterator( $upload_dir, RecursiveDirectoryIterator::SKIP_DOTS )
-			);
+			try {
+				$iterator = new RecursiveIteratorIterator(
+					new RecursiveDirectoryIterator( $upload_dir_real, RecursiveDirectoryIterator::SKIP_DOTS ),
+					RecursiveIteratorIterator::SELF_FIRST
+				);
+				// Limit recursion depth for performance.
+				$iterator->setMaxDepth( 10 );
 
-			foreach ( $iterator as $file ) {
-				if ( $file->isFile() ) {
-					$relative_path = str_replace( $upload_dir, '', $file->getPathname() );
-					if ( ! isset( $db_paths[ $relative_path ] ) ) {
-						// This is an orphan physical file
-						if ( wp_delete_file( $file->getPathname() ) ) {
-							++$deleted['physical_files'];
+				foreach ( $iterator as $file ) {
+					if ( $file->isFile() ) {
+						$file_path      = $file->getPathname();
+						$file_path_real = realpath( $file_path );
+
+						// Validate path is within upload directory.
+						if ( false === $file_path_real || strpos( $file_path_real, $upload_dir_real ) !== 0 ) {
+							continue;
+						}
+
+						$relative_path = str_replace( $upload_dir, '', $file_path );
+						if ( ! isset( $db_paths[ $relative_path ] ) ) {
+							// This is an orphan physical file.
+							if ( wp_delete_file( $file_path_real ) ) {
+								++$deleted['physical_files'];
+							}
 						}
 					}
 				}
+			} catch ( Exception $e ) {
+				error_log( 'Tabesh: Error scanning for orphan files: ' . $e->getMessage() );
 			}
 		}
 
@@ -1296,14 +1319,22 @@ class Tabesh_Export_Import {
 			return $count;
 		}
 
-		$iterator = new RecursiveIteratorIterator(
-			new RecursiveDirectoryIterator( $directory, RecursiveDirectoryIterator::SKIP_DOTS )
-		);
+		try {
+			$iterator = new RecursiveIteratorIterator(
+				new RecursiveDirectoryIterator( $directory, RecursiveDirectoryIterator::SKIP_DOTS ),
+				RecursiveIteratorIterator::SELF_FIRST
+			);
+			// Limit recursion depth for performance.
+			$iterator->setMaxDepth( 10 );
 
-		foreach ( $iterator as $file ) {
-			if ( $file->isFile() ) {
-				++$count;
+			foreach ( $iterator as $file ) {
+				if ( $file->isFile() ) {
+					++$count;
+				}
 			}
+		} catch ( Exception $e ) {
+			// Log error but don't fail - return count of 0.
+			error_log( 'Tabesh: Error counting files in ' . $directory . ': ' . $e->getMessage() );
 		}
 
 		return $count;
@@ -1318,10 +1349,24 @@ class Tabesh_Export_Import {
 	private function delete_physical_files( $file_paths ) {
 		$deleted    = 0;
 		$upload_dir = $this->get_upload_directory();
+		$upload_dir = realpath( $upload_dir );
+
+		if ( false === $upload_dir ) {
+			return 0;
+		}
 
 		foreach ( $file_paths as $file_path ) {
-			$full_path = $upload_dir . $file_path;
-			if ( file_exists( $full_path ) && wp_delete_file( $full_path ) ) {
+			// Validate path to prevent path traversal attacks.
+			$full_path = $upload_dir . '/' . ltrim( $file_path, '/' );
+			$real_path = realpath( $full_path );
+
+			// Ensure the resolved path is within the upload directory.
+			if ( false === $real_path || strpos( $real_path, $upload_dir ) !== 0 ) {
+				error_log( 'Tabesh: Attempted to delete file outside upload directory: ' . $file_path );
+				continue;
+			}
+
+			if ( file_exists( $real_path ) && wp_delete_file( $real_path ) ) {
 				++$deleted;
 			}
 		}
@@ -1343,6 +1388,9 @@ class Tabesh_Export_Import {
 		$security_logs_table = $wpdb->prefix . 'tabesh_security_logs';
 		$user                = wp_get_current_user();
 
+		// Get real client IP, considering proxies and load balancers.
+		$ip_address = $this->get_client_ip();
+
 		$log_data = array(
 			'user_id'     => $user->ID,
 			'action'      => 'cleanup_' . $action,
@@ -1352,11 +1400,47 @@ class Tabesh_Export_Import {
 					'result'  => $result,
 				)
 			),
-			'ip_address'  => isset( $_SERVER['REMOTE_ADDR'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) ) : '',
+			'ip_address'  => $ip_address,
 			'created_at'  => current_time( 'mysql' ),
 		);
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 		$wpdb->insert( $security_logs_table, $log_data );
+	}
+
+	/**
+	 * Get client IP address, considering proxies
+	 *
+	 * @return string Client IP address
+	 */
+	private function get_client_ip() {
+		$ip_address = '';
+
+		// Check for proxy headers in order of preference.
+		$headers = array(
+			'HTTP_CF_CONNECTING_IP', // CloudFlare
+			'HTTP_X_FORWARDED_FOR',  // Standard proxy header
+			'HTTP_X_REAL_IP',        // Nginx proxy
+			'REMOTE_ADDR',           // Direct connection
+		);
+
+		foreach ( $headers as $header ) {
+			if ( ! empty( $_SERVER[ $header ] ) ) {
+				$ip_address = sanitize_text_field( wp_unslash( $_SERVER[ $header ] ) );
+
+				// If X-Forwarded-For contains multiple IPs, get the first one.
+				if ( strpos( $ip_address, ',' ) !== false ) {
+					$ips        = explode( ',', $ip_address );
+					$ip_address = trim( $ips[0] );
+				}
+
+				// Validate IP address format.
+				if ( filter_var( $ip_address, FILTER_VALIDATE_IP ) ) {
+					break;
+				}
+			}
+		}
+
+		return $ip_address;
 	}
 }
