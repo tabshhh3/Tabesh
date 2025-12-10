@@ -1243,17 +1243,22 @@
             const archived = $('#cleanup_orders_archived').is(':checked');
             const days = parseInt($('#cleanup_orders_days').val()) || 0;
             const userId = parseInt($('#cleanup_orders_user_id').val()) || 0;
+            const orderId = parseInt($('#cleanup_orders_order_id').val()) || 0;
 
-            if (!all && !archived && !days && !userId) {
+            if (!all && !archived && !days && !userId && !orderId) {
                 alert('لطفاً حداقل یک گزینه را انتخاب کنید');
                 return;
             }
 
             let confirmMsg = 'آیا مطمئن هستید که می‌خواهید سفارشات را حذف کنید؟\n';
-            if (all) confirmMsg += '- همه سفارشات حذف خواهند شد\n';
-            if (archived) confirmMsg += '- سفارشات بایگانی شده حذف خواهند شد\n';
-            if (days) confirmMsg += '- سفارشات قدیمی‌تر از ' + days + ' روز حذف خواهند شد\n';
-            if (userId) confirmMsg += '- سفارشات کاربر ' + userId + ' حذف خواهند شد\n';
+            if (orderId) {
+                confirmMsg += '- سفارش با شناسه ' + orderId + ' حذف خواهد شد\n';
+            } else {
+                if (all) confirmMsg += '- همه سفارشات حذف خواهند شد\n';
+                if (archived) confirmMsg += '- سفارشات بایگانی شده حذف خواهند شد\n';
+                if (days) confirmMsg += '- سفارشات قدیمی‌تر از ' + days + ' روز حذف خواهند شد\n';
+                if (userId) confirmMsg += '- سفارشات کاربر ' + userId + ' حذف خواهند شد\n';
+            }
             confirmMsg += '\nاین عملیات قابل بازگشت نیست!';
 
             if (!confirm(confirmMsg)) {
@@ -1274,7 +1279,8 @@
                     all: all,
                     archived: archived,
                     older_than: days,
-                    user_id: userId
+                    user_id: userId,
+                    order_id: orderId
                 }),
                 beforeSend: function(xhr) {
                     xhr.setRequestHeader('X-WP-Nonce', tabeshAdminData.nonce);
@@ -1284,7 +1290,7 @@
                         $status.html('<span style="color: #46b450;">✓ ' + response.message + '</span>');
                         // Reset form
                         $('#cleanup_orders_all, #cleanup_orders_archived').prop('checked', false);
-                        $('#cleanup_orders_days, #cleanup_orders_user_id').val('');
+                        $('#cleanup_orders_days, #cleanup_orders_user_id, #cleanup_orders_order_id').val('');
                         // Refresh preview
                         $('#show-cleanup-preview').trigger('click');
                     } else {

@@ -1513,6 +1513,14 @@ $admin = $tabesh->admin;
                                 حذف سفارشات کاربر با شناسه:
                                 <input type="number" id="cleanup_orders_user_id" min="0" placeholder="User ID" style="width: 100px; margin-right: 5px;">
                             </label>
+                            <hr style="margin: 15px 0; border-top: 1px dashed #ddd;">
+                            <label style="display: block; margin-bottom: 8px;">
+                                <strong>حذف سفارش خاص با شناسه سفارش:</strong>
+                                <input type="number" id="cleanup_orders_order_id" min="1" placeholder="Order ID" style="width: 120px; margin-right: 5px;">
+                            </label>
+                            <p class="description" style="margin: 5px 0 0 0; color: #666;">
+                                💡 با وارد کردن شناسه سفارش (Order ID)، فقط همان سفارش خاص حذف می‌شود. این گزینه بر سایر گزینه‌ها اولویت دارد.
+                            </p>
                         </div>
                         <button type="button" id="cleanup-orders-btn" class="button">
                             🗑️ حذف سفارشات
