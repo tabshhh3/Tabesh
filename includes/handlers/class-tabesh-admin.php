@@ -497,6 +497,78 @@ class Tabesh_Admin {
             }
         }
         
+        // Handle nested pricing_binding_matrix structure (binding_type => [book_size => price])
+        if (isset($post_data['pricing_binding_matrix']) && is_array($post_data['pricing_binding_matrix'])) {
+            $sanitized_data = array();
+            foreach ($post_data['pricing_binding_matrix'] as $binding_type => $sizes) {
+                $sanitized_type = sanitize_text_field($binding_type);
+                $sanitized_data[$sanitized_type] = array();
+                
+                if (is_array($sizes)) {
+                    foreach ($sizes as $book_size => $price) {
+                        $sanitized_size = sanitize_text_field($book_size);
+                        $sanitized_price = is_numeric($price) ? floatval($price) : 0;
+                        $sanitized_data[$sanitized_type][$sanitized_size] = $sanitized_price;
+                    }
+                }
+            }
+            
+            if (!empty($sanitized_data)) {
+                $result = $wpdb->replace(
+                    $table,
+                    array(
+                        'setting_key' => 'pricing_binding_matrix',
+                        'setting_value' => wp_json_encode($sanitized_data, JSON_UNESCAPED_UNICODE),
+                        'setting_type' => 'string'
+                    )
+                );
+                
+                if ($result === false) {
+                    error_log("Tabesh: Failed to save setting: pricing_binding_matrix - Error: " . $wpdb->last_error);
+                } else {
+                    if (defined('WP_DEBUG') && WP_DEBUG) {
+                        $total_entries = 0;
+                        foreach ($sanitized_data as $type => $sizes) {
+                            $total_entries += count($sizes);
+                        }
+                        error_log("Tabesh: Successfully saved pricing_binding_matrix with $total_entries size entries across " . count($sanitized_data) . " binding types");
+                    }
+                }
+            }
+        }
+        
+        // Handle nested pricing_options_config structure (option_name => [price, type, step])
+        if (isset($post_data['pricing_options_config']) && is_array($post_data['pricing_options_config'])) {
+            $sanitized_data = array();
+            foreach ($post_data['pricing_options_config'] as $option_name => $config) {
+                $sanitized_name = sanitize_text_field($option_name);
+                $sanitized_data[$sanitized_name] = array(
+                    'price' => isset($config['price']) && is_numeric($config['price']) ? floatval($config['price']) : 0,
+                    'type' => isset($config['type']) ? sanitize_text_field($config['type']) : 'fixed',
+                    'step' => isset($config['step']) && is_numeric($config['step']) ? intval($config['step']) : 16000,
+                );
+            }
+            
+            if (!empty($sanitized_data)) {
+                $result = $wpdb->replace(
+                    $table,
+                    array(
+                        'setting_key' => 'pricing_options_config',
+                        'setting_value' => wp_json_encode($sanitized_data, JSON_UNESCAPED_UNICODE),
+                        'setting_type' => 'string'
+                    )
+                );
+                
+                if ($result === false) {
+                    error_log("Tabesh: Failed to save setting: pricing_options_config - Error: " . $wpdb->last_error);
+                } else {
+                    if (defined('WP_DEBUG') && WP_DEBUG) {
+                        error_log("Tabesh: Successfully saved pricing_options_config with " . count($sanitized_data) . " options");
+                    }
+                }
+            }
+        }
+        
         // Convert profit margin percentage to decimal (e.g., 10% -> 0.10)
         if (isset($post_data['pricing_profit_margin'])) {
             $profit_margin = floatval($post_data['pricing_profit_margin']) / 100;

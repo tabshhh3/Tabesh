@@ -549,86 +549,151 @@ $admin = $tabesh->admin;
                 </div>
                 <?php endif; ?>
 
-                <h3>هزینه صحافی (Binding Costs)</h3>
+                <h3>هزینه صحافی (Binding Costs Matrix)</h3>
                 
                 <?php
-                // Get product parameters for binding types
+                // Get product parameters for binding types and book sizes
                 $product_binding_types = $admin->get_setting('binding_types', array());
-                $pricing_binding_costs = $admin->get_setting('pricing_binding_costs', array());
+                $product_book_sizes = $admin->get_setting('book_sizes', array());
+                $pricing_binding_matrix = $admin->get_setting('pricing_binding_matrix', array());
                 
-                if (is_array($product_binding_types) && !empty($product_binding_types)):
+                if (is_array($product_binding_types) && !empty($product_binding_types) && 
+                    is_array($product_book_sizes) && !empty($product_book_sizes)):
                 ?>
                 <div class="notice notice-info inline">
                     <p>
-                        <strong>🎯 قیمت‌گذاری هوشمند:</strong> فیلدهای زیر به صورت خودکار از پارامترهای محصول تولید شده‌اند.
-                        برای اضافه یا حذف نوع صحافی، به تب "پارامترهای محصول" مراجعه کنید.
+                        <strong>🎯 ماتریس قیمتگذاری هوشمند:</strong> هزینه صحافی بر اساس ترکیب نوع صحافی و قطع کتاب محاسبه می‌شود.
+                        فیلدهای زیر به صورت خودکار از پارامترهای محصول تولید شده‌اند.
+                    </p>
+                    <p>
+                        <strong>💡 نکته:</strong> برای هر ترکیب نوع صحافی و قطع کتاب، قیمت مجزا تعیین کنید.
                     </p>
                 </div>
                 
                 <table class="form-table">
                     <?php foreach ($product_binding_types as $binding_type): ?>
-                    <tr>
-                        <th><label for="pricing_binding_<?php echo esc_attr($binding_type); ?>">
-                            <?php echo esc_html($binding_type); ?>
-                        </label></th>
-                        <td>
-                            <input type="number" 
-                                   id="pricing_binding_<?php echo esc_attr($binding_type); ?>" 
-                                   name="pricing_binding_costs[<?php echo esc_attr($binding_type); ?>]" 
-                                   value="<?php echo esc_attr($pricing_binding_costs[$binding_type] ?? '0'); ?>" 
-                                   step="1" 
-                                   min="0" 
-                                   class="regular-text" 
-                                   placeholder="3000"> تومان
-                        </td>
-                    </tr>
+                        <tr>
+                            <th colspan="2" style="background-color: #f0f0f0; padding: 10px;">
+                                <strong><?php echo esc_html($binding_type); ?></strong>
+                                <span class="description" style="font-weight: normal; margin-right: 10px;">
+                                    (<?php echo count($product_book_sizes); ?> قطع)
+                                </span>
+                            </th>
+                        </tr>
+                        <?php foreach ($product_book_sizes as $book_size): ?>
+                        <tr>
+                            <th style="padding-right: 30px;">
+                                <label for="pricing_binding_<?php echo esc_attr(md5($binding_type . '__' . $book_size)); ?>">
+                                    قطع <?php echo esc_html($book_size); ?>
+                                </label>
+                            </th>
+                            <td>
+                                <input type="number" 
+                                       id="pricing_binding_<?php echo esc_attr(md5($binding_type . '__' . $book_size)); ?>" 
+                                       name="pricing_binding_matrix[<?php echo esc_attr($binding_type); ?>][<?php echo esc_attr($book_size); ?>]" 
+                                       value="<?php echo esc_attr($pricing_binding_matrix[$binding_type][$book_size] ?? '0'); ?>" 
+                                       step="1" 
+                                       min="0" 
+                                       class="regular-text" 
+                                       placeholder="3000"> تومان
+                                <span class="description">برای صحافی <?php echo esc_html($binding_type); ?> در قطع <?php echo esc_html($book_size); ?></span>
+                            </td>
+                        </tr>
+                        <?php endforeach; ?>
                     <?php endforeach; ?>
                 </table>
                 
                 <?php else: ?>
                 <div class="notice notice-warning inline">
                     <p>
-                        <strong>⚠️ توجه:</strong> هیچ نوع صحافی در تب "پارامترهای محصول" تعریف نشده است.
-                        لطفاً ابتدا انواع صحافی را در آن بخش تعریف کنید.
+                        <strong>⚠️ توجه:</strong> هیچ نوع صحافی یا قطع کتابی در تب "پارامترهای محصول" تعریف نشده است.
+                        لطفاً ابتدا انواع صحافی و قطع‌های کتاب را در آن بخش تعریف کنید.
                     </p>
                 </div>
                 <?php endif; ?>
 
-                <h3>هزینه آپشن‌های اضافی (Additional Options)</h3>
+                <h3>هزینه آپشن‌های اضافی (Additional Options - سه نوع محاسبه)</h3>
                 
                 <?php
                 // Get product parameters for extras/options
                 $product_extras = $admin->get_setting('extras', array());
-                $pricing_options_costs = $admin->get_setting('pricing_options_costs', array());
+                $pricing_options_config = $admin->get_setting('pricing_options_config', array());
                 
                 if (is_array($product_extras) && !empty($product_extras)):
                 ?>
                 <div class="notice notice-info inline">
                     <p>
-                        <strong>🎯 قیمت‌گذاری هوشمند:</strong> فیلدهای زیر به صورت خودکار از پارامترهای محصول تولید شده‌اند.
-                        برای اضافه یا حذف خدمت اضافی، به تب "پارامترهای محصول" مراجعه کنید.
+                        <strong>🎯 قیمت‌گذاری هوشمند با سه نوع محاسبه:</strong> فیلدهای زیر به صورت خودکار از پارامترهای محصول تولید شده‌اند.
                     </p>
+                    <p>
+                        <strong>📋 انواع محاسبه:</strong>
+                    </p>
+                    <ul style="margin-right: 20px;">
+                        <li><strong>ثابت (Fixed):</strong> قیمت یکبار به کل فاکتور اضافه می‌شود</li>
+                        <li><strong>به ازای هر جلد (Per Unit):</strong> قیمت در تعداد جلدها ضرب می‌شود</li>
+                        <li><strong>بر اساس صفحه (Page-Based):</strong> قیمت بر اساس تعداد صفحات و گام محاسبه می‌شود (مثل بسته‌بندی کارتن)</li>
+                    </ul>
                 </div>
                 
                 <table class="form-table">
-                    <?php foreach ($product_extras as $extra): ?>
+                    <?php foreach ($product_extras as $extra): 
+                        $option_config = $pricing_options_config[$extra] ?? array('price' => 0, 'type' => 'fixed', 'step' => 16000);
+                    ?>
                     <tr>
                         <th><label for="pricing_option_<?php echo esc_attr($extra); ?>">
                             <?php echo esc_html($extra); ?>
                         </label></th>
                         <td>
-                            <input type="number" 
-                                   id="pricing_option_<?php echo esc_attr($extra); ?>" 
-                                   name="pricing_options_costs[<?php echo esc_attr($extra); ?>]" 
-                                   value="<?php echo esc_attr($pricing_options_costs[$extra] ?? '0'); ?>" 
-                                   step="1" 
-                                   min="0" 
-                                   class="regular-text" 
-                                   placeholder="1000"> تومان
+                            <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+                                <div>
+                                    <label style="font-weight: normal;">قیمت:</label>
+                                    <input type="number" 
+                                           id="pricing_option_<?php echo esc_attr($extra); ?>" 
+                                           name="pricing_options_config[<?php echo esc_attr($extra); ?>][price]" 
+                                           value="<?php echo esc_attr($option_config['price'] ?? '0'); ?>" 
+                                           step="1" 
+                                           min="0" 
+                                           class="regular-text" 
+                                           placeholder="1000"> تومان
+                                </div>
+                                <div>
+                                    <label style="font-weight: normal;">نوع محاسبه:</label>
+                                    <select name="pricing_options_config[<?php echo esc_attr($extra); ?>][type]" class="regular-text pricing-option-type">
+                                        <option value="fixed" <?php selected($option_config['type'] ?? 'fixed', 'fixed'); ?>>ثابت (Fixed)</option>
+                                        <option value="per_unit" <?php selected($option_config['type'] ?? 'fixed', 'per_unit'); ?>>به ازای هر جلد (Per Unit)</option>
+                                        <option value="page_based" <?php selected($option_config['type'] ?? 'fixed', 'page_based'); ?>>بر اساس صفحه (Page-Based)</option>
+                                    </select>
+                                </div>
+                                <div class="pricing-option-step" style="<?php echo ($option_config['type'] ?? 'fixed') !== 'page_based' ? 'display:none;' : ''; ?>">
+                                    <label style="font-weight: normal;">گام (Step):</label>
+                                    <input type="number" 
+                                           name="pricing_options_config[<?php echo esc_attr($extra); ?>][step]" 
+                                           value="<?php echo esc_attr($option_config['step'] ?? '16000'); ?>" 
+                                           step="1" 
+                                           min="1" 
+                                           class="small-text" 
+                                           placeholder="16000"> صفحه
+                                    <span class="description">تعداد صفحات در هر واحد (مثلاً 16000 برای کارتن)</span>
+                                </div>
+                            </div>
                         </td>
                     </tr>
                     <?php endforeach; ?>
                 </table>
+                
+                <script type="text/javascript">
+                jQuery(document).ready(function($) {
+                    $('.pricing-option-type').on('change', function() {
+                        var $row = $(this).closest('tr');
+                        var $stepDiv = $row.find('.pricing-option-step');
+                        if ($(this).val() === 'page_based') {
+                            $stepDiv.show();
+                        } else {
+                            $stepDiv.hide();
+                        }
+                    });
+                });
+                </script>
                 
                 <?php else: ?>
                 <div class="notice notice-warning inline">
