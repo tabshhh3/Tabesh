@@ -903,28 +903,15 @@ final class Tabesh {
             'sms_admin_user_registration_pattern' => '',
             'sms_admin_order_created_enabled' => '0',
             'sms_admin_order_created_pattern' => '',
-            // Order status SMS notifications - pending
-            'sms_status_pending_enabled' => '0',
-            'sms_status_pending_pattern' => '',
-            // Order status SMS notifications - confirmed
-            'sms_status_confirmed_enabled' => '0',
-            'sms_status_confirmed_pattern' => '',
-            // Order status SMS notifications - processing
-            'sms_status_processing_enabled' => '0',
-            'sms_status_processing_pattern' => '',
-            // Order status SMS notifications - ready
-            'sms_status_ready_enabled' => '0',
-            'sms_status_ready_pattern' => '',
-            // Order status SMS notifications - completed
-            'sms_status_completed_enabled' => '0',
-            'sms_status_completed_pattern' => '',
-            // Order status SMS notifications - cancelled
-            'sms_status_cancelled_enabled' => '0',
-            'sms_status_cancelled_pattern' => '',
-            // Order status SMS notifications - archived
-            'sms_status_archived_enabled' => '0',
-            'sms_status_archived_pattern' => '',
         );
+        
+        // Add SMS status notifications for all order statuses dynamically
+        // Order statuses: pending, confirmed, processing, ready, completed, cancelled, archived
+        $order_statuses = array('pending', 'confirmed', 'processing', 'ready', 'completed', 'cancelled', 'archived');
+        foreach ($order_statuses as $status) {
+            $defaults['sms_status_' . $status . '_enabled'] = '0';
+            $defaults['sms_status_' . $status . '_pattern'] = '';
+        }
 
         global $wpdb;
         $table_settings = $wpdb->prefix . 'tabesh_settings';
