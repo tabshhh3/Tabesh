@@ -121,9 +121,25 @@ class Tabesh_Order {
 		// Determines paper usage factor and print cost multiplier
 		$size_multiplier = $pricing_config['book_sizes'][ $book_size ] ?? 1.0;
 
-		// Step 2: Paper Type Base Cost (نوع کاغذ)
-		// Each paper type has a base cost per page
-		$paper_base_cost = $pricing_config['paper_types'][ $paper_type ] ?? 250;
+		// Step 2: Paper Type Base Cost (نوع کاغذ و گرماژ)
+		// Each paper type + weight combination has a specific cost per page
+		// New dynamic pricing: pricing_paper_weights[paper_type][weight]
+		$paper_base_cost = 0;
+		if ( isset( $pricing_config['paper_weights'][ $paper_type ][ $paper_weight ] ) ) {
+			$paper_base_cost = $pricing_config['paper_weights'][ $paper_type ][ $paper_weight ];
+		} else {
+			// Fallback: check old pricing_paper_types structure (backward compatibility)
+			$paper_base_cost = $pricing_config['paper_types'][ $paper_type ] ?? 250;
+			
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				error_log( sprintf( 
+					'Tabesh WARNING: Weight-based pricing not found for paper "%s" weight "%s", using fallback cost: %s', 
+					$paper_type, 
+					$paper_weight, 
+					$paper_base_cost 
+				) );
+			}
+		}
 
 		// Step 3: Print Cost per Page (هزینه چاپ هر صفحه)
 		// Different costs for B&W vs Color printing
@@ -312,7 +328,8 @@ class Tabesh_Order {
 		// Fetch all pricing settings in a single query for performance
 		$pricing_keys = array(
 			'pricing_book_sizes',
-			'pricing_paper_types',
+			'pricing_paper_types',      // Old format (backward compatibility)
+			'pricing_paper_weights',    // New weight-based format
 			'pricing_print_costs',
 			'pricing_cover_types',
 			'pricing_lamination_costs',
@@ -355,6 +372,20 @@ class Tabesh_Order {
 				'تحریر'  => 200,
 				'بالک'   => 250,
 			),
+			'paper_weights'      => array(
+				// New weight-based pricing structure (paper_type => [weight => price])
+				'تحریر' => array(
+					'60'  => 150,
+					'70'  => 180,
+					'80'  => 200,
+				),
+				'بالک' => array(
+					'60'  => 200,
+					'70'  => 230,
+					'80'  => 250,
+					'100' => 300,
+				),
+			),
 			'print_costs'        => array(
 				'bw'    => 200,
 				'color' => 800,
@@ -396,6 +427,7 @@ class Tabesh_Order {
 		$config = array(
 			'book_sizes'         => $settings['pricing_book_sizes'] ?? $defaults['book_sizes'],
 			'paper_types'        => $settings['pricing_paper_types'] ?? $defaults['paper_types'],
+			'paper_weights'      => $settings['pricing_paper_weights'] ?? $defaults['paper_weights'],
 			'print_costs'        => $settings['pricing_print_costs'] ?? $defaults['print_costs'],
 			'cover_types'        => $settings['pricing_cover_types'] ?? $defaults['cover_types'],
 			'lamination_costs'   => $settings['pricing_lamination_costs'] ?? $defaults['lamination_costs'],
