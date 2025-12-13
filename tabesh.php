@@ -968,7 +968,7 @@ final class Tabesh {
 			'sms_disable_global_for_staff'        => '0',  // Enable SMS notifications for staff panel by default.
 			// General File Upload Settings.
 			'file_upload_max_size'                => '52428800',   // 50 MB in bytes (general default).
-			'file_upload_allowed_types'           => wp_json_encode( array( 'pdf', 'jpg', 'jpeg', 'png', 'psd', 'doc', 'docx', 'zip', 'rar' ) ),
+			'file_upload_allowed_types'           => json_encode( array( 'pdf', 'jpg', 'jpeg', 'png', 'psd', 'doc', 'docx', 'zip', 'rar' ) ),
 		);
 
 		// Add SMS status notifications for all order statuses dynamically
