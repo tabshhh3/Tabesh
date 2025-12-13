@@ -1,5 +1,34 @@
 # GitHub Copilot Instructions for Tabesh
 
+## Quick Reference
+
+**Most Common Commands:**
+```bash
+# Lint your changes
+composer phpcs
+
+# Auto-fix code style issues
+composer phpcbf
+
+# Install dependencies (first time setup)
+composer install
+```
+
+**Before submitting your changes:**
+1. Run `composer phpcs` on modified files
+2. Fix any linting errors in code you changed
+3. Test in RTL mode (Persian language)
+4. Test responsive design on mobile
+5. Verify all security measures (nonces, sanitization, escaping)
+
+**Key Security Rules (ALWAYS follow):**
+- Sanitize ALL user input: `sanitize_text_field()`, `sanitize_email()`, `intval()`
+- Escape ALL output: `esc_html()`, `esc_attr()`, `esc_url()`
+- Use nonces for ALL forms: `wp_verify_nonce()`
+- Use prepared statements for ALL queries: `$wpdb->prepare()`
+
+---
+
 ## Project Overview
 
 Tabesh is a comprehensive WordPress plugin for managing book printing orders with full WooCommerce integration. It provides a complete order lifecycle management system with SMS notifications, dynamic price calculation, and role-based access control for Admins, Staff, and Customers.
@@ -10,6 +39,25 @@ Tabesh is a comprehensive WordPress plugin for managing book printing orders wit
 - WooCommerce (latest version)
 - MySQL/MariaDB
 - RTL (Right-to-Left) support for Persian language
+
+**Development Workflow:**
+1. This is a WordPress plugin - it requires a WordPress installation to run
+2. Code style is enforced via PHP CodeSniffer (run `composer phpcs`)
+3. No automated unit tests - manual testing is required
+4. All changes must maintain RTL support for Persian language
+5. Security is paramount - follow WordPress security best practices
+
+**Getting Started:**
+```bash
+# Install dependencies (PHP CodeSniffer, WPCS)
+composer install
+
+# Run linting to check code style
+composer phpcs
+
+# Fix auto-fixable code style issues
+composer phpcbf
+```
 
 ## Architecture
 
@@ -44,6 +92,26 @@ Tabesh/
 - `wp_tabesh_settings` - Plugin configuration
 - `wp_tabesh_logs` - Activity logs
 
+### File Organization
+
+**Where to put new code:**
+- **Core functionality** (WordPress integration, installation): `includes/core/`
+- **Business logic** (orders, admin operations, notifications): `includes/handlers/`
+- **Utilities** (validation, security, helpers): `includes/utils/`
+- **Security features**: `includes/security/`
+- **Admin templates**: `templates/admin/`
+- **Frontend templates**: `templates/frontend/`
+- **Reusable components**: `templates/partials/`
+
+**File naming convention:**
+- Classes: `class-tabesh-{name}.php` (e.g., `class-tabesh-order.php`)
+- Templates: `{name}.php` (e.g., `admin-dashboard.php`)
+- Use lowercase with hyphens, not underscores
+
+**Class naming convention:**
+- `Tabesh_{Name}` (PascalCase) - e.g., `Tabesh_Order`, `Tabesh_Admin`
+- Class name should match filename (without `class-` prefix)
+
 ## Coding Standards
 
 ### PHP Standards
@@ -55,9 +123,46 @@ Tabesh/
 
 2. **Security First**
    - **Always sanitize input**: Use `sanitize_text_field()`, `sanitize_email()`, `intval()`, etc.
+     ```php
+     // Good
+     $name = sanitize_text_field($_POST['name']);
+     $email = sanitize_email($_POST['email']);
+     $count = intval($_POST['count']);
+     
+     // Bad - never use raw input
+     $name = $_POST['name'];  // WRONG!
+     ```
    - **Always escape output**: Use `esc_html()`, `esc_attr()`, `esc_url()`, `wp_kses_post()`, etc.
+     ```php
+     // Good
+     echo esc_html($user_input);
+     echo '<a href="' . esc_url($link) . '">' . esc_html($text) . '</a>';
+     
+     // Bad - unescaped output is a security risk
+     echo $user_input;  // WRONG!
+     ```
    - **Use nonces**: Verify nonces for all form submissions with `wp_verify_nonce()`
+     ```php
+     // Good - verify nonce
+     if (!isset($_POST['tabesh_nonce']) || 
+         !wp_verify_nonce($_POST['tabesh_nonce'], 'tabesh_action')) {
+         wp_die(__('Security check failed', 'tabesh'));
+     }
+     
+     // Bad - accepting form submissions without nonce verification
+     if (isset($_POST['submit'])) { ... }  // WRONG!
+     ```
    - **Use prepared statements**: Always use `$wpdb->prepare()` for database queries
+     ```php
+     // Good
+     $wpdb->get_results($wpdb->prepare(
+         "SELECT * FROM {$wpdb->prefix}tabesh_orders WHERE id = %d",
+         $order_id
+     ));
+     
+     // Bad - vulnerable to SQL injection
+     $wpdb->get_results("SELECT * FROM wp_tabesh_orders WHERE id = $order_id");  // WRONG!
+     ```
    - **Never use direct SQL**: Always use WordPress $wpdb class methods
 
 3. **Code Organization**
@@ -117,14 +222,67 @@ Tabesh/
 All routes are prefixed with `/wp-json/tabesh/v1/`
 
 - **POST** `/calculate-price` - Calculate order price
+  ```javascript
+  // Example usage
+  fetch('/wp-json/tabesh/v1/calculate-price', {
+      method: 'POST',
+      headers: {
+          'Content-Type': 'application/json',
+          'X-WP-Nonce': tabeshData.nonce
+      },
+      body: JSON.stringify({
+          book_size: 'وزیری',
+          pages: 200,
+          paper_type: 'گلاسه',
+          // ... other parameters
+      })
+  });
+  ```
+
 - **POST** `/submit-order` - Submit new order (requires authentication)
+  ```javascript
+  // Must be logged in, nonce required
+  fetch('/wp-json/tabesh/v1/submit-order', {
+      method: 'POST',
+      headers: {
+          'Content-Type': 'application/json',
+          'X-WP-Nonce': tabeshData.nonce
+      },
+      body: JSON.stringify(orderData)
+  });
+  ```
+
 - **POST** `/update-status` - Update order status (requires permission)
+  ```javascript
+  // Requires edit_shop_orders capability
+  fetch('/wp-json/tabesh/v1/update-status', {
+      method: 'POST',
+      headers: {
+          'Content-Type': 'application/json',
+          'X-WP-Nonce': tabeshData.nonce
+      },
+      body: JSON.stringify({
+          order_id: 123,
+          new_status: 'processing'
+      })
+  });
+  ```
 
 When creating new endpoints:
-- Register routes in the main plugin file or dedicated REST controller
+- Register routes in the main plugin file (`tabesh.php`) or dedicated REST controller
 - Validate permissions using `current_user_can()`
-- Sanitize all inputs
+- Sanitize all inputs using WordPress sanitization functions
 - Return consistent JSON responses with proper HTTP status codes
+  ```php
+  // Example endpoint registration
+  register_rest_route('tabesh/v1', '/my-endpoint', array(
+      'methods' => 'POST',
+      'callback' => 'my_callback_function',
+      'permission_callback' => function() {
+          return current_user_can('edit_shop_orders');
+      }
+  ));
+  ```
 
 ## Features and Components
 
@@ -156,6 +314,18 @@ When creating new endpoints:
 
 ## Development Guidelines
 
+### Before Making Changes
+
+1. **Understand the Workflow**
+   - Run `composer phpcs` first to see baseline linting issues
+   - You are NOT responsible for fixing pre-existing issues
+   - Only fix linting issues in code you modify
+
+2. **Understand Project Dependencies**
+   - This is a WordPress plugin - WordPress must be running
+   - Requires WooCommerce plugin to be active
+   - Cannot run standalone or be tested without WordPress environment
+
 ### Adding New Features
 
 1. **Plan First**
@@ -174,6 +344,7 @@ When creating new endpoints:
    - Test responsive design on mobile
    - Test with WooCommerce integration
    - Verify all security measures
+   - Run `composer phpcs` on modified files
 
 ### Modifying Existing Features
 
@@ -181,6 +352,7 @@ When creating new endpoints:
    - Make the smallest possible change to achieve the goal
    - Don't refactor unrelated code unless fixing security issues
    - Keep backward compatibility when possible
+   - Run `composer phpcs` on modified files only
 
 2. **Database Changes**
    - Never modify existing columns
@@ -192,48 +364,122 @@ When creating new endpoints:
    - Always provide default values
    - Validate and sanitize settings on save
 
+### What NOT to Change
+
+1. **Don't fix unrelated issues**
+   - If there are pre-existing bugs or linting errors in code you're not modifying, leave them alone
+   - Focus only on the specific issue you're addressing
+   
+2. **Don't modify working WordPress integration**
+   - The plugin integrates with WordPress and WooCommerce - don't change core integration points unless that's specifically your task
+   
+3. **Don't change database structure without migration**
+   - Any database changes require migration scripts
+   - See `migration-convert-settings-to-json.php` as an example
+
+4. **Don't remove or modify existing hooks/filters**
+   - Other code may depend on them
+   - Add new ones if needed, but keep existing ones for backward compatibility
+
 ## Testing
+
+### Linting and Code Quality
+
+The project uses PHP CodeSniffer with WordPress Coding Standards. Always run linting before committing:
+
+```bash
+# Run linting (checks code style and security issues)
+composer phpcs
+
+# Auto-fix code style issues where possible
+composer phpcbf
+```
+
+**Important**: Fix any linting errors in code you modify. You are NOT responsible for fixing pre-existing linting errors in unrelated code.
 
 ### Manual Testing Checklist
 
-- [ ] Test with fresh WordPress installation
+Since this project does not have automated unit tests, manual testing is critical:
+
+- [ ] Test with fresh WordPress installation (or use existing dev environment)
 - [ ] Verify WooCommerce integration works
 - [ ] Test all user roles (Admin, Staff, Customer)
-- [ ] Test RTL layout rendering
+- [ ] Test RTL layout rendering (essential for Persian language support)
 - [ ] Test responsive design on mobile
 - [ ] Verify SMS notifications (if configured)
 - [ ] Test order submission flow
 - [ ] Test price calculation with various parameters
 - [ ] Check security (nonces, sanitization, escaping)
 - [ ] Review database queries for SQL injection vulnerabilities
+- [ ] Run `composer phpcs` on modified files
 
 ### Browser Testing
 - Test in Chrome, Firefox, Safari
-- Test on mobile browsers
-- Test with browser console open (check for JavaScript errors)
+- Test on mobile browsers (especially for RTL rendering)
+- Test with browser console open (F12) - check for JavaScript errors
+- Test with both LTR and RTL layouts
 
 ## Common Pitfalls to Avoid
 
 1. **Don't bypass WordPress functions**
    - Use WordPress APIs instead of raw PHP functions
    - Example: Use `wp_remote_get()` instead of `file_get_contents()`
+   ```php
+   // Good - WordPress way
+   $response = wp_remote_get('https://api.example.com/data');
+   if (!is_wp_error($response)) {
+       $body = wp_remote_retrieve_body($response);
+   }
+   
+   // Bad - raw PHP
+   $data = file_get_contents('https://api.example.com/data');  // WRONG!
+   ```
 
 2. **Don't ignore RTL support**
-   - Always consider RTL layout when adding CSS
-   - Test in Persian language mode
+   - This plugin MUST support RTL for Persian language
+   - Use logical properties where possible
+   - Always test in RTL mode
+   ```css
+   /* Good - RTL-safe */
+   margin-inline-start: 10px;
+   padding-inline-end: 20px;
+   
+   /* Less ideal - requires RTL override */
+   margin-left: 10px;  /* Will need RTL-specific rule */
+   ```
+   - Test in Persian language mode by adding to wp-config.php: `define('WPLANG', 'fa_IR');`
 
 3. **Don't hardcode values**
    - Use settings and configuration options
    - Make values translatable with `__()` or `_e()`
+   ```php
+   // Good - translatable and configurable
+   $message = __('Order submitted successfully', 'tabesh');
+   $price_per_page = get_option('tabesh_price_per_page', 100);
+   
+   // Bad - hardcoded
+   $message = 'Order submitted successfully';  // WRONG! Not translatable
+   $price_per_page = 100;  // WRONG! Not configurable
+   ```
 
 4. **Don't forget WooCommerce compatibility**
    - This plugin integrates with WooCommerce
    - Check WooCommerce functions availability before using
+   ```php
+   // Good - check if WooCommerce is active
+   if (class_exists('WooCommerce')) {
+       // Use WooCommerce functions
+   }
+   
+   // Bad - assuming WooCommerce exists
+   WC()->cart->add_to_cart($product_id);  // WRONG! May cause fatal error
+   ```
 
 5. **Don't skip security measures**
    - Every user input must be sanitized
    - Every output must be escaped
    - Every form must use nonces
+   - See "Security First" section above for examples
 
 ## Debugging
 
@@ -253,13 +499,43 @@ define('WP_DEBUG_DISPLAY', false);
 
 ### Debug Tools
 - `error_log()` - Writes to `wp-content/debug.log` (only when `WP_DEBUG_LOG` is enabled)
-- Browser console - Check JavaScript errors
+  ```php
+  error_log('Debug message: ' . print_r($variable, true));
+  ```
+- Browser console - Check JavaScript errors (F12 → Console tab)
+  ```javascript
+  console.log('Debug:', variable);
+  console.error('Error:', errorMessage);
+  ```
 - `tabesh-diagnostic.php` - **For development only**: Upload to a protected directory with `.htaccess` or use within WordPress admin interface. Never leave diagnostic tools in publicly accessible locations.
+  - This file helps diagnose settings and configuration issues
+  - Shows database structure, settings values, and system information
+  - **NEVER** use in production - contains sensitive information
+
+### Debugging Workflow
+1. Enable `WP_DEBUG_LOG` in development
+2. Reproduce the issue
+3. Check `wp-content/debug.log` for errors
+4. Check browser console for JavaScript errors
+5. Use `error_log()` to add debug statements
+6. Use `tabesh-diagnostic.php` for configuration issues
+7. **Remember to disable debugging before deploying to production**
 
 ### Common Issues
 - **Settings not saving**: Check database permissions and debug logs
+  ```php
+  // Add debug logging to investigate
+  error_log('Settings before save: ' . print_r($settings, true));
+  $result = update_option('tabesh_settings', $settings);
+  error_log('Update result: ' . ($result ? 'success' : 'failed'));
+  ```
 - **Price calculation errors**: Verify all pricing fields format (`key=value`)
+  - Check `includes/handlers/class-tabesh-order.php` → `calculate_price()` method
+  - Ensure all pricing parameters are numeric
 - **SMS not sending**: Check MelliPayamak credentials and balance
+  - Check `includes/handlers/class-tabesh-sms.php` for SMS API integration
+  - Verify API credentials in Settings → SMS
+  - Check debug log for API response
 
 ## Internationalization (i18n)
 
