@@ -27,26 +27,41 @@ Meanwhile, the `Tabesh_Admin::get_orders()` method correctly applied the firewal
 ### Code Changes
 **File:** `includes/handlers/class-tabesh-archive.php`  
 **Method:** `get_orders_by_archive_status()`  
-**Lines Added:** 4 lines
+**Lines Added:** 8 lines
 
 ```php
-// Apply firewall filtering to hide confidential orders in lockdown mode.
+// Firewall filter: Exclude WAR orders in lockdown mode.
 $firewall = new Tabesh_Doomsday_Firewall();
-$orders   = $firewall->filter_orders_for_display( $orders, get_current_user_id(), 'admin' );
+if ( $firewall->is_enabled() && $firewall->is_lockdown_mode() ) {
+    // Exclude orders with @WAR# in notes field.
+    $where_clauses[] = '(notes NOT LIKE %s OR notes IS NULL)';
+    $params[]        = '%' . $wpdb->esc_like( Tabesh_Doomsday_Firewall::WAR_TAG ) . '%';
+}
 ```
 
 ### Implementation Details
-The fix was applied immediately after retrieving orders from the database and before returning them. This ensures that:
+The fix applies firewall filtering at the **SQL query level** by adding a WHERE clause that excludes orders containing `@WAR#` in their notes field. This approach provides:
 
-1. **Archived orders** (`get_archived_orders()`) are filtered
-2. **Cancelled orders** (`get_cancelled_orders()`) are filtered
-3. The filtering logic is consistent with the existing implementation in `Tabesh_Admin::get_orders()`
+1. **Accurate pagination** - Total count and pagination correctly reflect filtered results
+2. **Better performance** - Database-level filtering is more efficient than PHP-level filtering
+3. **Consistent behavior** - Uses the same `WAR_TAG` constant as the firewall class
+
+The filter is applied when:
+- Firewall is enabled (`$firewall->is_enabled()`)
+- AND lockdown mode is active (`$firewall->is_lockdown_mode()`)
+
+This ensures that:
+1. **Archived orders** (`get_archived_orders()`) are filtered with accurate counts
+2. **Cancelled orders** (`get_cancelled_orders()`) are filtered with accurate counts
+3. The filtering happens before pagination, ensuring correct total counts
 
 ### Context Parameter
-The filter uses `'admin'` as the context parameter because:
-- Both archived and cancelled orders are only accessible to users with `manage_woocommerce` capability
-- This matches the access level of the admin dashboard where these orders are displayed
-- The firewall's filtering logic for admin context: hide @WAR# orders only when lockdown is active
+The SQL-based filter checks both firewall settings when building the WHERE clause:
+- Firewall must be enabled
+- Lockdown mode must be active
+- Only then are @WAR# orders excluded from the query
+
+This provides the same security level as the existing active orders implementation but with better performance and accuracy.
 
 ## Testing Scenarios
 
@@ -126,13 +141,37 @@ composer phpcs -- includes/handlers/class-tabesh-archive.php
 ## Performance Considerations
 
 ### Impact Analysis
-- **Additional Processing:** Minimal - only instantiates firewall object and filters array
-- **Database Queries:** No additional queries (filtering happens in-memory)
-- **Memory Usage:** Negligible (operates on already-loaded order objects)
-- **Execution Time:** < 1ms for typical order lists
+- **Additional Processing:** Minimal - firewall state check happens once per query
+- **Database Queries:** Same number of queries, just with an additional WHERE clause
+- **Memory Usage:** Better than PHP filtering - less data retrieved from database
+- **Execution Time:** Improved - database-level filtering is faster than PHP-level filtering
 
-### Caching Note
-The firewall filter operates on already-retrieved orders, so it doesn't affect database caching strategies. The filtering happens at the application layer after database retrieval.
+### SQL Query Optimization
+The WHERE clause uses:
+- `notes NOT LIKE %@WAR#%` - Efficiently filters out matching orders
+- `OR notes IS NULL` - Handles orders without notes
+- Proper parameter escaping via `$wpdb->esc_like()`
+
+### Comparison: SQL vs PHP Filtering
+
+**SQL-based (Current Implementation):**
+```
+SELECT COUNT(*) WHERE ... AND (notes NOT LIKE '%@WAR#%' OR notes IS NULL)
+SELECT * WHERE ... AND (notes NOT LIKE '%@WAR#%' OR notes IS NULL) LIMIT 20
+✅ Returns 20 filtered results
+✅ Count is accurate
+✅ Less data transferred
+```
+
+**PHP-based (Previous Approach):**
+```
+SELECT COUNT(*) WHERE ...
+SELECT * WHERE ... LIMIT 20
+Filter results in PHP
+❌ Might return < 20 results after filtering
+❌ Count includes filtered-out orders
+❌ More data transferred then discarded
+```
 
 ## Related Components
 
@@ -162,11 +201,15 @@ No special upgrade procedures required. The fix applies immediately upon deploym
 This fix ensures complete and consistent protection of confidential orders marked with `@WAR#` across all sections of the order management system when Doomsday Firewall lockdown mode is active.
 
 ### Summary of Changes
-- **Lines of code changed:** 4
+- **Lines of code changed:** 8 (4 added to WHERE clause builder, 4 removed from post-query filtering)
 - **Security vulnerabilities fixed:** 1 (HIGH severity)
 - **Breaking changes:** 0
 - **New dependencies:** 0
-- **Performance impact:** Negligible
+- **Performance impact:** Positive (faster, more efficient)
+- **Pagination accuracy:** Improved (counts now reflect actual filtered results)
 
 ### Verification
-The fix has been implemented using the exact same pattern already proven to work in the active orders section, ensuring consistency and reliability.
+The fix has been implemented using SQL-based filtering at the database query level, which provides:
+- ✅ Better performance than the active orders implementation (which uses PHP filtering)
+- ✅ Accurate pagination with correct total counts
+- ✅ Consistent security protection across all order sections
