@@ -341,6 +341,7 @@ $status_order = array('pending', 'confirmed', 'processing', 'ready', 'completed'
                                 <?php 
                                 $substeps = Tabesh()->print_substeps->get_order_substeps($order->id);
                                 $progress = Tabesh()->print_substeps->calculate_print_progress($order->id);
+                                $substep_history = Tabesh()->print_substeps->get_substep_history($order->id);
                                 ?>
                                 <?php if (!empty($substeps)): ?>
                                     <?php if ($order->status === 'confirmed'): ?>
@@ -376,6 +377,34 @@ $status_order = array('pending', 'confirmed', 'processing', 'ready', 'completed'
                                                     <?php if ($substep->is_completed): ?>
                                                         <span class="substep-completed-badge">✓ انجام شد</span>
                                                     <?php endif; ?>
+                                                </div>
+                                            <?php endforeach; ?>
+                                        </div>
+                                    </div>
+                                <?php endif; ?>
+
+                                <!-- Substep History Section -->
+                                <?php if (!empty($substep_history)): ?>
+                                    <div class="substep-history-section">
+                                        <div class="section-header">
+                                            <span class="section-icon">📋</span>
+                                            <h4 class="section-title"><?php _e('تاریخچه تغییرات مراحل چاپ', 'tabesh'); ?></h4>
+                                        </div>
+                                        <div class="history-list">
+                                            <?php foreach ($substep_history as $log): ?>
+                                                <div class="history-item">
+                                                    <div class="history-icon"><?php echo $log->new_status === 'completed' ? '✅' : '❌'; ?></div>
+                                                    <div class="history-content">
+                                                        <div class="history-description">
+                                                            <?php echo esc_html($log->description); ?>
+                                                        </div>
+                                                        <div class="history-meta">
+                                                            <?php if (!empty($log->staff_name)): ?>
+                                                                <span class="history-user">👤 <?php echo esc_html($log->staff_name); ?></span>
+                                                            <?php endif; ?>
+                                                            <span class="history-date">🕐 <?php echo date_i18n('Y/m/d H:i', strtotime($log->created_at)); ?></span>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             <?php endforeach; ?>
                                         </div>

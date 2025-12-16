@@ -141,10 +141,15 @@ $status_history = $wpdb->get_results($wpdb->prepare(
 // Get print substeps - show for all orders that have substeps (not limited to processing status)
 $substeps = array();
 $substeps_progress = 0;
+$substep_history = array();
 if (isset(Tabesh()->print_substeps) && method_exists(Tabesh()->print_substeps, 'get_order_substeps')) {
     $substeps = Tabesh()->print_substeps->get_order_substeps($order_id);
     if (!empty($substeps)) {
         $substeps_progress = Tabesh()->print_substeps->calculate_print_progress($order_id);
+    }
+    // Get substep change history
+    if (method_exists(Tabesh()->print_substeps, 'get_substep_history')) {
+        $substep_history = Tabesh()->print_substeps->get_substep_history($order_id);
     }
 }
 
@@ -656,6 +661,32 @@ $status_labels = array(
                                     $new_label
                                 );
                                 ?>
+                            </div>
+                            <div class="history-meta">
+                                <?php if (!empty($log->staff_name)): ?>
+                                <span class="history-user">👤 <?php echo esc_html($log->staff_name); ?></span>
+                                <?php endif; ?>
+                                <span class="history-date">🕐 <?php echo date_i18n('Y/m/d H:i', strtotime($log->created_at)); ?></span>
+                            </div>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+        </div>
+        <?php endif; ?>
+
+        <?php if (!empty($substep_history)): ?>
+        <div class="substep-history-container">
+            <div class="history-title">
+                📋 <?php esc_html_e('تاریخچه تغییرات مراحل چاپ', 'tabesh'); ?>
+            </div>
+            <div class="history-list">
+                <?php foreach ($substep_history as $log): ?>
+                    <div class="history-item">
+                        <div class="history-icon"><?php echo $log->new_status === 'completed' ? '✅' : '❌'; ?></div>
+                        <div class="history-content">
+                            <div class="history-status-change">
+                                <?php echo esc_html($log->description); ?>
                             </div>
                             <div class="history-meta">
                                 <?php if (!empty($log->staff_name)): ?>

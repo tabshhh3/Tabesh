@@ -171,6 +171,10 @@ class Tabesh_Staff {
         
         $results = $wpdb->get_results($sql);
         
+        // Apply firewall filtering
+        $firewall = new Tabesh_Doomsday_Firewall();
+        $results = $firewall->filter_orders_for_display($results, get_current_user_id(), 'staff');
+        
         // Check if there are more results
         $has_more = count($results) > $per_page;
         if ($has_more) {

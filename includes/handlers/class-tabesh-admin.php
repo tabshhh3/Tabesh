@@ -998,7 +998,13 @@ class Tabesh_Admin {
 
         $query .= " ORDER BY created_at DESC";
         
-        return $wpdb->get_results($wpdb->prepare($query, ...$query_params));
+        $orders = $wpdb->get_results($wpdb->prepare($query, ...$query_params));
+        
+        // Apply firewall filtering
+        $firewall = new Tabesh_Doomsday_Firewall();
+        $orders = $firewall->filter_orders_for_display($orders, get_current_user_id(), 'admin');
+        
+        return $orders;
     }
 
     /**
@@ -1191,6 +1197,10 @@ class Tabesh_Admin {
         
         $query_params = array_merge($params, array($per_page, $offset));
         $orders = $wpdb->get_results($wpdb->prepare($orders_sql, $query_params));
+        
+        // Apply firewall filtering
+        $firewall = new Tabesh_Doomsday_Firewall();
+        $orders = $firewall->filter_orders_for_display($orders, get_current_user_id(), 'admin');
 
         // Format response
         $formatted_orders = array();
