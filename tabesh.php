@@ -1198,6 +1198,24 @@ final class Tabesh {
 
 		register_rest_route(
 			TABESH_REST_NAMESPACE,
+			'/available-options',
+			array(
+				'methods'             => 'GET',
+				'callback'            => array( $this, 'rest_get_available_options' ),
+				'permission_callback' => '__return_true',
+				'args'                => array(
+					'book_size' => array(
+						'required'          => true,
+						'validate_callback' => function ( $param ) {
+							return ! empty( $param );
+						},
+					),
+				),
+			)
+		);
+
+		register_rest_route(
+			TABESH_REST_NAMESPACE,
 			'/submit-order',
 			array(
 				'methods'             => WP_REST_Server::CREATABLE,
@@ -1793,6 +1811,56 @@ final class Tabesh {
 				'success' => true,
 				'users'   => $formatted_users,
 				'total'   => $user_query->get_total(),
+			),
+			200
+		);
+	}
+
+	/**
+	 * REST: Get available pricing options for a book size
+	 *
+	 * This endpoint returns the allowed paper types, bindings, and print types
+	 * based on the configured restrictions for a specific book size.
+	 *
+	 * @param WP_REST_Request $request Request object.
+	 * @return WP_REST_Response Response object.
+	 */
+	public function rest_get_available_options( $request ) {
+		$book_size = sanitize_text_field( $request->get_param( 'book_size' ) );
+
+		// Check if V2 engine is enabled.
+		$pricing_engine = new Tabesh_Pricing_Engine();
+
+		if ( ! $pricing_engine->is_enabled() ) {
+			return new WP_REST_Response(
+				array(
+					'success' => false,
+					'message' => __( 'موتور قیمت‌گذاری جدید فعال نیست', 'tabesh' ),
+				),
+				400
+			);
+		}
+
+		// Get available options.
+		$options = $pricing_engine->get_available_options( $book_size );
+
+		if ( isset( $options['error'] ) && $options['error'] ) {
+			return new WP_REST_Response(
+				array(
+					'success' => false,
+					'message' => $options['message'],
+				),
+				400
+			);
+		}
+
+		return new WP_REST_Response(
+			array(
+				'success'            => true,
+				'book_size'          => $options['book_size'],
+				'available_papers'   => $options['available_papers'],
+				'available_bindings' => $options['available_bindings'],
+				'has_restrictions'   => $options['has_restrictions'],
 			),
 			200
 		);
