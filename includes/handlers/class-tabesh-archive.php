@@ -281,6 +281,10 @@ class Tabesh_Archive {
 		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- Query is prepared below.
 		$orders = $wpdb->get_results( $wpdb->prepare( $query, $params ) );
 
+		// Apply firewall filtering to hide confidential orders in lockdown mode.
+		$firewall = new Tabesh_Doomsday_Firewall();
+		$orders   = $firewall->filter_orders_for_display( $orders, get_current_user_id(), 'admin' );
+
 		return array(
 			'orders'       => $orders,
 			'total'        => $total,
