@@ -334,6 +334,28 @@ class Tabesh_Print_Substeps {
 	}
 
 	/**
+	 * Get the current active substep for an order.
+	 * Returns the first incomplete substep, or null if all are completed.
+	 *
+	 * @param int $order_id Order ID.
+	 * @return object|null Substep object or null.
+	 */
+	public function get_current_active_substep( $order_id ) {
+		global $wpdb;
+		$table = $wpdb->prefix . 'tabesh_print_substeps';
+
+		// Get the first incomplete substep ordered by display_order.
+		$substep = $wpdb->get_row(
+			$wpdb->prepare(
+				"SELECT * FROM {$wpdb->prefix}tabesh_print_substeps WHERE order_id = %d AND is_completed = 0 ORDER BY display_order ASC LIMIT 1",
+				$order_id
+			)
+		);
+
+		return $substep;
+	}
+
+	/**
 	 * REST API endpoint handler for updating substep status
 	 *
 	 * @param WP_REST_Request $request REST request object

@@ -175,6 +175,15 @@ $status_order = array('pending', 'confirmed', 'processing', 'ready', 'completed'
                                     <span class="status-badge status-<?php echo esc_attr($order->status); ?>">
                                         <?php echo esc_html($status_labels[$order->status] ?? $order->status); ?>
                                     </span>
+                                    <?php 
+                                    // Display current print substep if in processing status
+                                    if ($order->status === 'processing' && isset(Tabesh()->print_substeps)) {
+                                        $current_substep = Tabesh()->print_substeps->get_current_active_substep($order->id);
+                                        if ($current_substep) {
+                                            echo '<br><small style="color: #666; font-size: 10px;">(' . esc_html($current_substep->substep_title) . ')</small>';
+                                        }
+                                    }
+                                    ?>
                                 </div>
                             </div>
                         </div>

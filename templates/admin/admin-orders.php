@@ -97,6 +97,15 @@ $orders = $admin->get_orders('', false);
                                 <option value="completed" <?php selected($order->status, 'completed'); ?>>تحویل داده شده</option>
                                 <option value="cancelled" <?php selected($order->status, 'cancelled'); ?>>لغو شده</option>
                             </select>
+                            <?php 
+                            // Display current print substep if in processing status
+                            if ($order->status === 'processing' && isset(Tabesh()->print_substeps)) {
+                                $current_substep = Tabesh()->print_substeps->get_current_active_substep($order->id);
+                                if ($current_substep) {
+                                    echo '<br><small style="color: #666;">(' . esc_html($current_substep->substep_title) . ')</small>';
+                                }
+                            }
+                            ?>
                         </td>
                         <td><?php echo date_i18n('Y/m/d H:i', strtotime($order->created_at)); ?></td>
                         <td>
