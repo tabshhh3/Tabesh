@@ -110,7 +110,6 @@ class Tabesh_Product_Pricing {
 			'book_size'            => $book_size,
 			'page_costs'           => $this->parse_page_costs( $_POST['page_costs'] ?? array() ),
 			'binding_costs'        => $this->parse_binding_costs( $_POST['binding_costs'] ?? array() ),
-			'cover_cost'           => isset( $_POST['cover_cost'] ) ? floatval( $_POST['cover_cost'] ) : 8000.0,
 			'extras_costs'         => $this->parse_extras_costs( $_POST['extras_costs'] ?? array() ),
 			'profit_margin'        => isset( $_POST['profit_margin'] ) ? floatval( $_POST['profit_margin'] ) / 100 : 0.0,
 			'restrictions'         => $this->parse_restrictions( $_POST['restrictions'] ?? array() ),
@@ -169,6 +168,9 @@ class Tabesh_Product_Pricing {
 	/**
 	 * Parse binding costs from POST data
 	 *
+	 * Now includes cover costs per weight for each binding type:
+	 * binding_costs[binding_type][cover_weight] = cost
+	 *
 	 * @param array $data POST data for binding costs
 	 * @return array Parsed binding costs
 	 */
@@ -179,9 +181,21 @@ class Tabesh_Product_Pricing {
 			return $binding_costs;
 		}
 
-		foreach ( $data as $binding_type => $cost ) {
-			$binding_type                   = sanitize_text_field( $binding_type );
-			$binding_costs[ $binding_type ] = floatval( $cost );
+		foreach ( $data as $binding_type => $weights_or_cost ) {
+			$binding_type = sanitize_text_field( $binding_type );
+
+			// New structure: binding_costs[binding_type][cover_weight] = cost
+			if ( is_array( $weights_or_cost ) ) {
+				$binding_costs[ $binding_type ] = array();
+				foreach ( $weights_or_cost as $cover_weight => $cost ) {
+					$cover_weight = sanitize_text_field( $cover_weight );
+					$binding_costs[ $binding_type ][ $cover_weight ] = floatval( $cost );
+				}
+			} else {
+				// Legacy structure: binding_costs[binding_type] = cost
+				// Keep for backward compatibility
+				$binding_costs[ $binding_type ] = floatval( $weights_or_cost );
+			}
 		}
 
 		return $binding_costs;
@@ -225,9 +239,10 @@ class Tabesh_Product_Pricing {
 	 */
 	private function parse_restrictions( $data ) {
 		$restrictions = array(
-			'forbidden_paper_types'   => array(),
-			'forbidden_binding_types' => array(),
-			'forbidden_print_types'   => array(),
+			'forbidden_paper_types'       => array(),
+			'forbidden_binding_types'     => array(),
+			'forbidden_print_types'       => array(),
+			'forbidden_cover_weights'     => array(),
 		);
 
 		if ( ! is_array( $data ) ) {
@@ -287,6 +302,49 @@ class Tabesh_Product_Pricing {
 				// Only add to restrictions if there are forbidden types
 				if ( ! empty( $forbidden_for_paper ) ) {
 					$restrictions['forbidden_print_types'][ $paper_type ] = $forbidden_for_paper;
+				}
+			}
+		}
+
+		// Parse forbidden cover weights from inline toggles
+		// Format: restrictions[forbidden_cover_weights][binding_type][cover_weight] = "0" (checked = enabled)
+		if ( isset( $data['forbidden_cover_weights'] ) && is_array( $data['forbidden_cover_weights'] ) ) {
+			$enabled_cover_combinations = array();
+			
+			foreach ( $data['forbidden_cover_weights'] as $binding_type => $weights_data ) {
+				$binding_type = sanitize_text_field( $binding_type );
+				
+				if ( ! is_array( $weights_data ) ) {
+					continue;
+				}
+				
+				foreach ( $weights_data as $cover_weight => $value ) {
+					$cover_weight = sanitize_text_field( $cover_weight );
+					
+					// If checkbox exists in POST (value = "0"), it means it's ENABLED
+					if ( ! isset( $enabled_cover_combinations[ $binding_type ] ) ) {
+						$enabled_cover_combinations[ $binding_type ] = array();
+					}
+					$enabled_cover_combinations[ $binding_type ][ $cover_weight ] = true;
+				}
+			}
+			
+			// Determine forbidden cover weights for each binding type
+			// We need to get all cover weights to know which ones are disabled
+			$all_cover_weights = $this->get_configured_cover_weights();
+			
+			foreach ( $enabled_cover_combinations as $binding_type => $enabled_weights ) {
+				$forbidden_for_binding = array();
+				
+				foreach ( $all_cover_weights as $weight ) {
+					if ( ! isset( $enabled_weights[ $weight ] ) ) {
+						$forbidden_for_binding[] = $weight;
+					}
+				}
+				
+				// Only add to restrictions if there are forbidden weights
+				if ( ! empty( $forbidden_for_binding ) ) {
+					$restrictions['forbidden_cover_weights'][ $binding_type ] = $forbidden_for_binding;
 				}
 			}
 		}
@@ -600,6 +658,48 @@ class Tabesh_Product_Pricing {
 
 		// Default extra services
 		return array( 'لب گرد', 'خط تا', 'شیرینک', 'سوراخ', 'شماره گذاری' );
+	}
+
+	/**
+	 * Get configured cover paper weights from admin settings
+	 *
+	 * @return array Cover paper weights
+	 */
+	private function get_configured_cover_weights() {
+		global $wpdb;
+		$table_settings = $wpdb->prefix . 'tabesh_settings';
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$result = $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT setting_value FROM {$table_settings} WHERE setting_key = %s",
+				'cover_paper_weights'
+			)
+		);
+
+		if ( $result ) {
+			$decoded = json_decode( $result, true );
+			if ( JSON_ERROR_NONE === json_last_error() && is_array( $decoded ) ) {
+				// Filter out invalid values and ensure numeric sort
+				$weights = array_filter(
+					array_map(
+						function ( $weight ) {
+							$weight = is_scalar( $weight ) ? trim( strval( $weight ) ) : '';
+							return ( ! empty( $weight ) && is_numeric( $weight ) ) ? $weight : null;
+						},
+						$decoded
+					)
+				);
+				// Sort numerically
+				usort( $weights, function( $a, $b ) {
+					return intval( $a ) - intval( $b );
+				});
+				return array_values( $weights );
+			}
+		}
+
+		// Default cover paper weights
+		return array( '200', '250', '300', '350' );
 	}
 
 	/**

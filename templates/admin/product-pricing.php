@@ -25,14 +25,17 @@ $reflection         = new ReflectionClass( $this );
 $get_paper_types    = $reflection->getMethod( 'get_configured_paper_types' );
 $get_binding_types  = $reflection->getMethod( 'get_configured_binding_types' );
 $get_extra_services = $reflection->getMethod( 'get_configured_extra_services' );
+$get_cover_weights  = $reflection->getMethod( 'get_configured_cover_weights' );
 
 $get_paper_types->setAccessible( true );
 $get_binding_types->setAccessible( true );
 $get_extra_services->setAccessible( true );
+$get_cover_weights->setAccessible( true );
 
 $configured_paper_types    = $get_paper_types->invoke( $this );
 $configured_binding_types  = $get_binding_types->invoke( $this );
 $configured_extra_services = $get_extra_services->invoke( $this );
+$configured_cover_weights  = $get_cover_weights->invoke( $this );
 
 // Extract paper type names and all possible weights.
 $paper_types_names = array_keys( $configured_paper_types );
@@ -209,75 +212,90 @@ $v2_enabled = $this->pricing_engine->is_enabled();
 				</div>
 			</div>
 
-			<!-- Section 2: Binding Costs -->
+			<!-- Section 2: Binding Costs & Cover Costs (Merged) -->
 			<div class="pricing-section">
-				<h3><?php esc_html_e( '۲. هزینه صحافی (مخصوص این قطع)', 'tabesh' ); ?></h3>
+				<h3><?php esc_html_e( '۲. هزینه صحافی و جلد (مخصوص این قطع)', 'tabesh' ); ?></h3>
 				<p class="description">
 					<?php
 					/* translators: %s: book size name */
-					echo esc_html( sprintf( __( 'هزینه صحافی برای قطع %s', 'tabesh' ), $current_book_size ) );
+					echo esc_html( sprintf( __( 'هزینه صحافی و جلد برای قطع %s - برای هر ترکیب صحافی و گرماژ جلد', 'tabesh' ), $current_book_size ) );
 					?>
 				</p>
 
-				<table class="pricing-table">
-					<thead>
-						<tr>
-							<th><?php esc_html_e( 'نوع صحافی', 'tabesh' ); ?></th>
-							<th><?php esc_html_e( 'هزینه (تومان)', 'tabesh' ); ?></th>
-						</tr>
-					</thead>
-					<tbody>
-						<?php
-						foreach ( $configured_binding_types as $binding_type ) :
-							$cost = $pricing_matrix['binding_costs'][ $binding_type ] ?? 0;
-							?>
-							<tr>
-								<td><?php echo esc_html( $binding_type ); ?></td>
-								<td>
-									<input type="number" 
-											name="binding_costs[<?php echo esc_attr( $binding_type ); ?>]" 
-											value="<?php echo esc_attr( $cost ); ?>" 
-											step="100" 
-											min="0" 
-											class="small-text">
-								</td>
-							</tr>
-						<?php endforeach; ?>
-					</tbody>
-				</table>
+				<div class="binding-cover-matrix">
+					<?php foreach ( $configured_binding_types as $binding_type ) : ?>
+						<div class="binding-type-group">
+							<h4><?php echo esc_html( $binding_type ); ?></h4>
+							<table class="pricing-table pricing-table-compact">
+								<thead>
+									<tr>
+										<th class="col-weight"><?php esc_html_e( 'گرماژ جلد', 'tabesh' ); ?></th>
+										<th class="col-cover-price"><?php esc_html_e( 'هزینه جلد (تومان)', 'tabesh' ); ?></th>
+									</tr>
+								</thead>
+								<tbody>
+									<?php foreach ( $configured_cover_weights as $cover_weight ) : ?>
+										<?php
+										// Get binding cost for this combination
+										// New structure: binding_costs[binding_type][cover_weight]
+										// Legacy fallback: binding_costs[binding_type] (single value)
+										$binding_data = $pricing_matrix['binding_costs'][ $binding_type ] ?? array();
+										
+										if ( is_array( $binding_data ) ) {
+											// New structure: array of weights
+											$cover_cost = $binding_data[ $cover_weight ] ?? 0;
+										} else {
+											// Legacy structure: single cost value - use it as default for all weights
+											$cover_cost = $binding_data;
+										}
+
+										// Check if this combination is forbidden
+										$forbidden_weights = $pricing_matrix['restrictions']['forbidden_cover_weights'][ $binding_type ] ?? array();
+										$is_forbidden      = in_array( $cover_weight, $forbidden_weights, true );
+										?>
+										<tr>
+											<td class="weight-cell">
+												<span class="weight-badge"><?php echo esc_html( $cover_weight ); ?></span>
+											</td>
+											
+											<!-- Cover Price Input with Toggle -->
+											<td class="price-input-cell">
+												<div class="price-input-wrapper">
+													<input type="number" 
+															name="binding_costs[<?php echo esc_attr( $binding_type ); ?>][<?php echo esc_attr( $cover_weight ); ?>]" 
+															value="<?php echo esc_attr( $cover_cost ); ?>" 
+															step="100" 
+															min="0" 
+															class="price-input"
+															<?php echo $is_forbidden ? 'disabled' : ''; ?>>
+													<label class="toggle-switch-inline">
+														<input type="checkbox" 
+																name="restrictions[forbidden_cover_weights][<?php echo esc_attr( $binding_type ); ?>][<?php echo esc_attr( $cover_weight ); ?>]" 
+																value="0"
+																class="cover-weight-toggle"
+																data-binding="<?php echo esc_attr( $binding_type ); ?>"
+																data-weight="<?php echo esc_attr( $cover_weight ); ?>"
+																<?php checked( ! $is_forbidden ); ?>>
+														<span class="toggle-slider-inline"></span>
+													</label>
+													<span class="status-badge <?php echo $is_forbidden ? 'status-disabled' : 'status-enabled'; ?>">
+														<?php echo $is_forbidden ? esc_html__( 'غیرفعال', 'tabesh' ) : esc_html__( 'فعال', 'tabesh' ); ?>
+													</span>
+												</div>
+											</td>
+										</tr>
+									<?php endforeach; ?>
+								</tbody>
+							</table>
+						</div>
+					<?php endforeach; ?>
+				</div>
 			</div>
 
-			<!-- Section 3: Cover Cost -->
-			<div class="pricing-section">
-				<h3><?php esc_html_e( '۳. هزینه جلد (مخصوص این قطع)', 'tabesh' ); ?></h3>
-				<p class="description">
-					<?php
-					/* translators: %s: book size name */
-					echo esc_html( sprintf( __( 'هزینه ثابت جلد برای قطع %s', 'tabesh' ), $current_book_size ) );
-					?>
-				</p>
 
-				<table class="pricing-table">
-					<tbody>
-						<tr>
-							<td><?php esc_html_e( 'هزینه جلد', 'tabesh' ); ?></td>
-							<td>
-								<input type="number" 
-										name="cover_cost" 
-										value="<?php echo esc_attr( $pricing_matrix['cover_cost'] ?? 8000 ); ?>" 
-										step="100" 
-										min="0" 
-										class="regular-text">
-								<span class="unit"><?php esc_html_e( 'تومان', 'tabesh' ); ?></span>
-							</td>
-						</tr>
-					</tbody>
-				</table>
-			</div>
-
-			<!-- Section 4: Extras -->
+			<!-- Section 3: Extras -->
 			<div class="pricing-section">
-				<h3><?php esc_html_e( '۴. خدمات اضافی', 'tabesh' ); ?></h3>
+				<h3><?php esc_html_e( '۳. خدمات اضافی', 'tabesh' ); ?></h3>
 				<p class="description">
 					<?php esc_html_e( 'تنظیم قیمت برای خدمات اضافی (لب گرد، شیرینک، ...)', 'tabesh' ); ?>
 				</p>
@@ -345,9 +363,9 @@ $v2_enabled = $this->pricing_engine->is_enabled();
 				</table>
 			</div>
 
-			<!-- Section 5: Profit Margin (renumbered from 6) -->
+			<!-- Section 4: Profit Margin -->
 			<div class="pricing-section">
-				<h3><?php esc_html_e( '۵. حاشیه سود', 'tabesh' ); ?></h3>
+				<h3><?php esc_html_e( '۴. حاشیه سود', 'tabesh' ); ?></h3>
 				<table class="pricing-table">
 					<tbody>
 						<tr>
@@ -367,9 +385,9 @@ $v2_enabled = $this->pricing_engine->is_enabled();
 				</table>
 			</div>
 
-			<!-- Section 6: Quantity Constraints (renumbered from 7) -->
+			<!-- Section 5: Quantity Constraints -->
 			<div class="pricing-section">
-				<h3><?php esc_html_e( '۶. محدودیت‌های تیراژ', 'tabesh' ); ?></h3>
+				<h3><?php esc_html_e( '۵. محدودیت‌های تیراژ', 'tabesh' ); ?></h3>
 				<p class="description">
 					<?php esc_html_e( 'تعیین حداقل، حداکثر و گام تغییر تیراژ برای این قطع کتاب', 'tabesh' ); ?>
 				</p>
@@ -506,18 +524,95 @@ jQuery(document).ready(function($) {
 		// Set initial state
 		$priceInput.prop('disabled', !isEnabled);
 	});
+	
+	// Handle cover weight toggle switches (same pattern as print type toggles)
+	$('.cover-weight-toggle').on('change', function() {
+		var $toggle = $(this);
+		var bindingType = $toggle.data('binding');
+		var weight = $toggle.data('weight');
+		var isEnabled = $toggle.is(':checked');
+		
+		// Find the corresponding price input (sibling in the same wrapper)
+		var $wrapper = $toggle.closest('.price-input-wrapper');
+		var $priceInput = $wrapper.find('.price-input');
+		var $statusBadge = $wrapper.find('.status-badge');
+		
+		// Enable/disable the price input
+		$priceInput.prop('disabled', !isEnabled);
+		
+		// Update the status badge
+		if (isEnabled) {
+			$statusBadge.removeClass('status-disabled').addClass('status-enabled').text('فعال');
+		} else {
+			$statusBadge.removeClass('status-enabled').addClass('status-disabled').text('غیرفعال');
+		}
+		
+		// Keep the value so admins don't lose their pricing when toggling
+	});
+	
+	// Initialize cover weight toggles on page load
+	$('.cover-weight-toggle').each(function() {
+		var $toggle = $(this);
+		var isEnabled = $toggle.is(':checked');
+		
+		// Find the corresponding price input (sibling in the same wrapper)
+		var $wrapper = $toggle.closest('.price-input-wrapper');
+		var $priceInput = $wrapper.find('.price-input');
+		
+		// Set initial state
+		$priceInput.prop('disabled', !isEnabled);
+	});
 });
 </script>
 
 <!-- Inline CSS for modern compact design -->
 <style>
+/* Binding-Cover Matrix Grid Layout */
+.binding-cover-matrix {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+	gap: 24px;
+	margin-top: 16px;
+}
+
+.binding-type-group {
+	background: #ffffff;
+	border: 2px solid #e2e8f0;
+	border-radius: 12px;
+	padding: 20px;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+	transition: all 0.2s ease;
+}
+
+.binding-type-group:hover {
+	border-color: #cbd5e1;
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.binding-type-group h4 {
+	margin: 0 0 16px 0;
+	padding: 12px 16px;
+	background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+	color: #ffffff;
+	border-radius: 8px;
+	font-size: 16px;
+	font-weight: 600;
+	text-align: center;
+	box-shadow: 0 2px 6px rgba(102, 126, 234, 0.3);
+}
+
 /* Compact table design */
 .pricing-table-compact {
 	table-layout: fixed;
 }
 
 .pricing-table-compact .col-weight {
-	width: 80px;
+	width: 100px;
+}
+
+.pricing-table-compact .col-cover-price {
+	width: auto;
+	min-width: 250px;
 }
 
 .pricing-table-compact .col-print-type {

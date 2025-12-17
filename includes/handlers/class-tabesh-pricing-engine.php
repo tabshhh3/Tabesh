@@ -156,10 +156,12 @@ class Tabesh_Pricing_Engine {
 		}
 
 		// Sanitize and extract input parameters with strict validation
-		$book_size    = sanitize_text_field( $params['book_size'] ?? '' );
-		$paper_type   = sanitize_text_field( $params['paper_type'] ?? '' );
-		$paper_weight = sanitize_text_field( $params['paper_weight'] ?? '' );
-		$print_type   = sanitize_text_field( $params['print_type'] ?? '' );
+		$book_size     = sanitize_text_field( $params['book_size'] ?? '' );
+		$paper_type    = sanitize_text_field( $params['paper_type'] ?? '' );
+		$paper_weight  = sanitize_text_field( $params['paper_weight'] ?? '' );
+		$print_type    = sanitize_text_field( $params['print_type'] ?? '' );
+		$binding_type  = sanitize_text_field( $params['binding_type'] ?? '' );
+		$cover_weight  = sanitize_text_field( $params['cover_paper_weight'] ?? $params['cover_weight'] ?? '' );
 
 		// Validate and sanitize numeric inputs - prevent null/NaN
 		$page_count_color = intval( $params['page_count_color'] ?? 0 );
@@ -170,8 +172,6 @@ class Tabesh_Pricing_Engine {
 		$page_count_color = max( 0, $page_count_color );
 		$page_count_bw    = max( 0, $page_count_bw );
 		$quantity         = max( 0, $quantity );
-
-		$binding_type = sanitize_text_field( $params['binding_type'] ?? '' );
 
 		// Validate required fields
 		if ( empty( $book_size ) || empty( $paper_type ) || empty( $binding_type ) ) {
@@ -277,7 +277,7 @@ class Tabesh_Pricing_Engine {
 		}
 
 		// Step 1: Validate parameter combination is allowed
-		$validation = $this->validate_parameters( $book_size, $paper_type, $paper_weight, $print_type, $binding_type );
+		$validation = $this->validate_parameters( $book_size, $paper_type, $paper_weight, $print_type, $binding_type, $cover_weight );
 		if ( ! $validation['allowed'] ) {
 			return array(
 				'error'   => true,
@@ -326,8 +326,8 @@ class Tabesh_Pricing_Engine {
 		$pages_cost_color = $per_page_cost_color * $page_count_color;
 		$total_pages_cost = $pages_cost_bw + $pages_cost_color;
 
-		// Step 4: Get binding cost for this book size.
-		$binding_cost = $this->get_binding_cost( $pricing_matrix, $binding_type );
+		// Step 4: Get binding cost for this book size (includes cover cost in new structure).
+		$binding_cost = $this->get_binding_cost( $pricing_matrix, $binding_type, $cover_weight );
 
 		if ( null === $binding_cost ) {
 			return array(
@@ -421,9 +421,10 @@ class Tabesh_Pricing_Engine {
 	 * @param string $paper_weight Paper weight
 	 * @param string $print_type Print type
 	 * @param string $binding_type Binding type
+	 * @param string $cover_weight Cover paper weight (optional)
 	 * @return array Validation result with 'allowed' and 'message' keys
 	 */
-	private function validate_parameters( $book_size, $paper_type, $paper_weight, $print_type, $binding_type ) {
+	private function validate_parameters( $book_size, $paper_type, $paper_weight, $print_type, $binding_type, $cover_weight = '' ) {
 		$pricing_matrix = $this->get_pricing_matrix( $book_size );
 
 		if ( ! $pricing_matrix ) {
@@ -468,6 +469,22 @@ class Tabesh_Pricing_Engine {
 			);
 		}
 
+		// Check if this cover weight is forbidden for this binding type
+		if ( ! empty( $cover_weight ) ) {
+			$forbidden_cover_weights = $restrictions['forbidden_cover_weights'][ $binding_type ] ?? array();
+			if ( in_array( $cover_weight, $forbidden_cover_weights, true ) ) {
+				return array(
+					'allowed' => false,
+					'message' => sprintf(
+						__( 'گرماژ جلد %1$s برای صحافی %2$s در قطع %3$s مجاز نیست', 'tabesh' ),
+						$cover_weight,
+						$binding_type,
+						$book_size
+					),
+				);
+			}
+		}
+
 		return array( 'allowed' => true );
 	}
 
@@ -509,17 +526,43 @@ class Tabesh_Pricing_Engine {
 	}
 
 	/**
-	 * Get binding cost for this book size
+	 * Get binding and cover cost for this book size
+	 *
+	 * New structure supports per-weight pricing: binding_costs[binding_type][cover_weight]
+	 * Legacy structure fallback: binding_costs[binding_type] (single value)
 	 *
 	 * @param array  $pricing_matrix Pricing matrix for book size.
 	 * @param string $binding_type Binding type.
-	 * @return float|null Binding cost or null if not configured.
+	 * @param string $cover_weight Cover paper weight (optional, for new structure).
+	 * @return float|null Binding+cover cost or null if not configured.
 	 */
-	private function get_binding_cost( $pricing_matrix, $binding_type ) {
+	private function get_binding_cost( $pricing_matrix, $binding_type, $cover_weight = null ) {
 		$binding_costs = $pricing_matrix['binding_costs'] ?? array();
 
 		if ( isset( $binding_costs[ $binding_type ] ) ) {
-			return floatval( $binding_costs[ $binding_type ] );
+			$binding_data = $binding_costs[ $binding_type ];
+			
+			// New structure: array of weights
+			if ( is_array( $binding_data ) ) {
+				// If cover_weight is provided and exists, use it
+				if ( null !== $cover_weight && isset( $binding_data[ $cover_weight ] ) ) {
+					return floatval( $binding_data[ $cover_weight ] );
+				}
+				
+				// Otherwise, try to find any available weight (first one)
+				if ( ! empty( $binding_data ) ) {
+					return floatval( reset( $binding_data ) );
+				}
+				
+				// No weights configured
+				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+					error_log( "Tabesh Pricing Engine V2 WARNING: No cover weights configured for binding type=$binding_type" );
+				}
+				return null;
+			}
+			
+			// Legacy structure: single cost value
+			return floatval( $binding_data );
 		}
 
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
@@ -530,13 +573,23 @@ class Tabesh_Pricing_Engine {
 	}
 
 	/**
-	 * Get cover cost for this book size
+	 * Get cover cost for this book size (Legacy compatibility)
+	 *
+	 * This method is deprecated. Cover costs are now part of binding_costs.
+	 * Kept for backward compatibility with old pricing matrices.
 	 *
 	 * @param array $pricing_matrix Pricing matrix for book size
-	 * @return float Cover cost
+	 * @return float Cover cost (defaults to 0 for new structure)
 	 */
 	private function get_cover_cost( $pricing_matrix ) {
-		return floatval( $pricing_matrix['cover_cost'] ?? 8000.0 );
+		// For legacy matrices that still have cover_cost
+		if ( isset( $pricing_matrix['cover_cost'] ) ) {
+			return floatval( $pricing_matrix['cover_cost'] );
+		}
+		
+		// For new structure, cover cost is included in binding_costs
+		// Return 0 to avoid double-counting
+		return 0.0;
 	}
 
 	/**
@@ -723,12 +776,31 @@ class Tabesh_Pricing_Engine {
 				),
 			),
 			'binding_costs'        => array(
-				'شومیز'    => 3000,
-				'جلد سخت'  => 8000,
-				'گالینگور' => 6000,
-				'سیمی'     => 2000,
+				'شومیز'    => array(
+					'200' => 5000,
+					'250' => 5500,
+					'300' => 6000,
+					'350' => 6500,
+				),
+				'جلد سخت'  => array(
+					'200' => 10000,
+					'250' => 11000,
+					'300' => 12000,
+					'350' => 13000,
+				),
+				'گالینگور' => array(
+					'200' => 8000,
+					'250' => 8500,
+					'300' => 9000,
+					'350' => 9500,
+				),
+				'سیمی'     => array(
+					'200' => 3000,
+					'250' => 3500,
+					'300' => 4000,
+					'350' => 4500,
+				),
 			),
-			'cover_cost'           => 8000,
 			'extras_costs'         => array(
 				'لب گرد' => array(
 					'price' => 1000,
@@ -751,6 +823,7 @@ class Tabesh_Pricing_Engine {
 				'forbidden_paper_types'   => array(),
 				'forbidden_binding_types' => array(),
 				'forbidden_print_types'   => array(),
+				'forbidden_cover_weights' => array(),
 			),
 			'quantity_constraints' => array(
 				'minimum_quantity' => 10,
