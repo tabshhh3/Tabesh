@@ -347,32 +347,33 @@ class Tabesh_Product_Pricing {
 		// Get configured sizes from new pricing engine
 		$configured_sizes = $this->pricing_engine->get_configured_book_sizes();
 
-		// Get default sizes from legacy system
+		// Get default sizes from admin settings (main book_sizes setting)
 		global $wpdb;
 		$table_settings = $wpdb->prefix . 'tabesh_settings';
 
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$result = $wpdb->get_var(
 			$wpdb->prepare(
 				"SELECT setting_value FROM $table_settings WHERE setting_key = %s",
-				'pricing_book_sizes'
+				'book_sizes'
 			)
 		);
 
-		$legacy_sizes = array();
+		$admin_sizes = array();
 		if ( $result ) {
 			$decoded = json_decode( $result, true );
 			if ( JSON_ERROR_NONE === json_last_error() && is_array( $decoded ) ) {
-				$legacy_sizes = array_keys( $decoded );
+				$admin_sizes = $decoded;
 			}
 		}
 
 		// Default sizes if nothing configured
-		if ( empty( $configured_sizes ) && empty( $legacy_sizes ) ) {
+		if ( empty( $configured_sizes ) && empty( $admin_sizes ) ) {
 			return array( 'A5', 'A4', 'B5', 'رقعی', 'وزیری', 'خشتی' );
 		}
 
-		// Merge configured and legacy sizes
-		$all_sizes = array_unique( array_merge( $configured_sizes, $legacy_sizes ) );
+		// Merge configured V2 sizes and admin setting sizes
+		$all_sizes = array_unique( array_merge( $configured_sizes, $admin_sizes ) );
 
 		return $all_sizes;
 	}
