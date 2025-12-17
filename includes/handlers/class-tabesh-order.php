@@ -688,9 +688,25 @@ class Tabesh_Order {
 		try {
 			$result = $this->calculate_price( $params );
 
+			// Check if calculation returned an error
+			if ( isset( $result['error'] ) && true === $result['error'] ) {
+				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+					error_log( 'Tabesh REST: Calculation returned error' );
+					error_log( 'Tabesh REST ERROR: ' . ( $result['message'] ?? 'Unknown error' ) );
+				}
+
+				return new WP_REST_Response(
+					array(
+						'success' => false,
+						'message' => $result['message'] ?? __( 'خطا در محاسبه قیمت', 'tabesh' ),
+					),
+					400
+				);
+			}
+
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 				error_log( 'Tabesh REST: Calculation successful' );
-				error_log( 'Tabesh REST: Total price: ' . $result['total_price'] );
+				error_log( 'Tabesh REST: Total price: ' . ( $result['total_price'] ?? 'N/A' ) );
 			}
 
 			return new WP_REST_Response(
