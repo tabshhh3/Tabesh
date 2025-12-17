@@ -33,6 +33,13 @@ class Tabesh_Pricing_Engine {
 	private static $pricing_matrix_cache = null;
 
 	/**
+	 * Cache for V2 enabled status to avoid redundant database queries
+	 *
+	 * @var bool|null
+	 */
+	private static $v2_enabled_cache = null;
+
+	/**
 	 * Clear pricing matrix cache
 	 * Should be called when pricing settings are updated
 	 *
@@ -40,6 +47,50 @@ class Tabesh_Pricing_Engine {
 	 */
 	public static function clear_cache() {
 		self::$pricing_matrix_cache = null;
+		self::$v2_enabled_cache     = null;
+	}
+
+	/**
+	 * Static helper to check if V2 is active without instantiating the class
+	 * This is the recommended way to check pricing engine status
+	 *
+	 * @return bool
+	 */
+	public static function is_v2_active() {
+		$instance = new self();
+		return $instance->is_enabled();
+	}
+
+	/**
+	 * Get diagnostic information about pricing engine status
+	 * Useful for debugging activation issues
+	 *
+	 * @return array Diagnostic information
+	 */
+	public static function get_diagnostic_info() {
+		global $wpdb;
+		$table_name = $wpdb->prefix . 'tabesh_settings';
+
+		// Query the database directly
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$result = $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT setting_value FROM {$table_name} WHERE setting_key = %s",
+				'pricing_engine_v2_enabled'
+			)
+		);
+
+		$is_active = self::is_v2_active();
+
+		return array(
+			'database_value'     => $result,
+			'database_value_type' => gettype( $result ),
+			'is_null'            => null === $result,
+			'is_v2_active'       => $is_active,
+			'cache_status'       => null === self::$v2_enabled_cache ? 'empty' : 'populated',
+			'cached_value'       => self::$v2_enabled_cache,
+			'table_name'         => $table_name,
+		);
 	}
 
 	/**
@@ -48,6 +99,11 @@ class Tabesh_Pricing_Engine {
 	 * @return bool
 	 */
 	public function is_enabled() {
+		// Return cached status if available
+		if ( null !== self::$v2_enabled_cache ) {
+			return self::$v2_enabled_cache;
+		}
+
 		global $wpdb;
 		$table_name = $wpdb->prefix . 'tabesh_settings';
 
@@ -59,7 +115,30 @@ class Tabesh_Pricing_Engine {
 			)
 		);
 
-		return '1' === $result || 'true' === $result;
+		// Debug logging if WP_DEBUG is enabled
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			error_log( sprintf(
+				'Tabesh Pricing Engine V2: Checking enabled status - DB value: "%s", Type: %s',
+				$result === null ? 'NULL' : $result,
+				gettype( $result )
+			) );
+		}
+
+		// Check for both string '1' and string 'true'
+		// Note: Database stores as string, not boolean
+		$is_enabled = ( '1' === $result || 'true' === $result );
+
+		// Cache the result
+		self::$v2_enabled_cache = $is_enabled;
+
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			error_log( sprintf(
+				'Tabesh Pricing Engine V2: Status determination - Enabled: %s',
+				$is_enabled ? 'YES' : 'NO'
+			) );
+		}
+
+		return $is_enabled;
 	}
 
 	/**

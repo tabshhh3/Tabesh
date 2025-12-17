@@ -389,6 +389,11 @@ class Tabesh_Product_Pricing {
 		global $wpdb;
 		$table_settings = $wpdb->prefix . 'tabesh_settings';
 
+		// Debug log before operation
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			error_log( 'Tabesh: Attempting to enable Pricing Engine V2' );
+		}
+
 		$existing = $wpdb->get_var(
 			$wpdb->prepare(
 				"SELECT setting_value FROM $table_settings WHERE setting_key = %s",
@@ -396,7 +401,16 @@ class Tabesh_Product_Pricing {
 			)
 		);
 
-		if ( $existing ) {
+		// Debug log existing value
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			error_log( sprintf(
+				'Tabesh: Existing pricing_engine_v2_enabled value: "%s"',
+				$existing === null ? 'NULL (not found in DB)' : $existing
+			) );
+		}
+
+		if ( $existing !== null ) {
+			// Update existing record
 			$result = $wpdb->update(
 				$table_settings,
 				array( 'setting_value' => '1' ),
@@ -404,7 +418,19 @@ class Tabesh_Product_Pricing {
 				array( '%s' ),
 				array( '%s' )
 			);
+
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				error_log( sprintf(
+					'Tabesh: UPDATE result for pricing_engine_v2_enabled: %s (rows affected: %d)',
+					$result === false ? 'FAILED' : 'SUCCESS',
+					$result === false ? 0 : $result
+				) );
+				if ( $result === false ) {
+					error_log( 'Tabesh: Database error: ' . $wpdb->last_error );
+				}
+			}
 		} else {
+			// Insert new record
 			$result = $wpdb->insert(
 				$table_settings,
 				array(
@@ -413,11 +439,37 @@ class Tabesh_Product_Pricing {
 				),
 				array( '%s', '%s' )
 			);
+
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				error_log( sprintf(
+					'Tabesh: INSERT result for pricing_engine_v2_enabled: %s',
+					$result === false ? 'FAILED' : 'SUCCESS'
+				) );
+				if ( $result === false ) {
+					error_log( 'Tabesh: Database error: ' . $wpdb->last_error );
+				}
+			}
 		}
 
 		// Clear pricing engine cache to ensure fresh data on reactivation
 		if ( false !== $result ) {
 			Tabesh_Pricing_Engine::clear_cache();
+
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				error_log( 'Tabesh: Pricing Engine cache cleared after enabling V2' );
+
+				// Verify the value was saved correctly
+				$verify = $wpdb->get_var(
+					$wpdb->prepare(
+						"SELECT setting_value FROM $table_settings WHERE setting_key = %s",
+						'pricing_engine_v2_enabled'
+					)
+				);
+				error_log( sprintf(
+					'Tabesh: VERIFICATION - Value in DB after save: "%s"',
+					$verify === null ? 'NULL' : $verify
+				) );
+			}
 		}
 
 		return false !== $result;
@@ -509,6 +561,11 @@ class Tabesh_Product_Pricing {
 		global $wpdb;
 		$table_settings = $wpdb->prefix . 'tabesh_settings';
 
+		// Debug log before operation
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			error_log( 'Tabesh: Attempting to disable Pricing Engine V2' );
+		}
+
 		$result = $wpdb->update(
 			$table_settings,
 			array( 'setting_value' => '0' ),
@@ -517,9 +574,24 @@ class Tabesh_Product_Pricing {
 			array( '%s' )
 		);
 
+		// Debug log result
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			error_log( sprintf(
+				'Tabesh: UPDATE result for disabling pricing_engine_v2_enabled: %s',
+				$result === false ? 'FAILED' : 'SUCCESS'
+			) );
+			if ( $result === false ) {
+				error_log( 'Tabesh: Database error: ' . $wpdb->last_error );
+			}
+		}
+
 		// Clear pricing engine cache when disabling
 		if ( false !== $result ) {
 			Tabesh_Pricing_Engine::clear_cache();
+
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				error_log( 'Tabesh: Pricing Engine cache cleared after disabling V2' );
+			}
 		}
 
 		return false !== $result;
