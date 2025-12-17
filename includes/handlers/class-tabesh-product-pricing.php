@@ -234,32 +234,59 @@ class Tabesh_Product_Pricing {
 			return $restrictions;
 		}
 
-		// Parse forbidden paper types
-		if ( isset( $data['forbidden_paper_types'] ) && is_array( $data['forbidden_paper_types'] ) ) {
-			foreach ( $data['forbidden_paper_types'] as $paper_type ) {
-				$restrictions['forbidden_paper_types'][] = sanitize_text_field( $paper_type );
-			}
-		}
-
-		// Parse forbidden binding types
-		if ( isset( $data['forbidden_binding_types'] ) && is_array( $data['forbidden_binding_types'] ) ) {
-			foreach ( $data['forbidden_binding_types'] as $binding_type ) {
-				$restrictions['forbidden_binding_types'][] = sanitize_text_field( $binding_type );
-			}
-		}
-
-		// Parse forbidden print types per paper
+		// Parse forbidden print types from inline toggles
+		// New format: restrictions[forbidden_print_types][paper_type][weight][print_type] = "0" (checked = enabled)
+		// If checkbox is NOT checked (disabled), the value won't be in POST data
 		if ( isset( $data['forbidden_print_types'] ) && is_array( $data['forbidden_print_types'] ) ) {
-			foreach ( $data['forbidden_print_types'] as $paper_type => $print_types ) {
+			// Get all paper types and their weights to check which ones are disabled
+			// First, collect all enabled combinations
+			$enabled_combinations = array();
+			
+			foreach ( $data['forbidden_print_types'] as $paper_type => $weights_data ) {
 				$paper_type = sanitize_text_field( $paper_type );
-
-				if ( ! is_array( $print_types ) ) {
+				
+				if ( ! is_array( $weights_data ) ) {
 					continue;
 				}
-
-				$restrictions['forbidden_print_types'][ $paper_type ] = array();
-				foreach ( $print_types as $print_type ) {
-					$restrictions['forbidden_print_types'][ $paper_type ][] = sanitize_text_field( $print_type );
+				
+				foreach ( $weights_data as $weight => $print_types_data ) {
+					if ( ! is_array( $print_types_data ) ) {
+						continue;
+					}
+					
+					foreach ( $print_types_data as $print_type => $value ) {
+						$print_type = sanitize_text_field( $print_type );
+						
+						// If checkbox exists in POST (value = "0"), it means it's ENABLED
+						// So we track enabled combinations
+						if ( ! isset( $enabled_combinations[ $paper_type ] ) ) {
+							$enabled_combinations[ $paper_type ] = array();
+						}
+						$enabled_combinations[ $paper_type ][ $print_type ] = true;
+					}
+				}
+			}
+			
+			// Now determine which print types are forbidden for each paper type
+			// If BOTH bw and color are disabled for a paper type, we mark it as forbidden
+			// Otherwise, we mark specific print types as forbidden
+			foreach ( $enabled_combinations as $paper_type => $enabled_prints ) {
+				$bw_enabled    = isset( $enabled_prints['bw'] );
+				$color_enabled = isset( $enabled_prints['color'] );
+				
+				// Build the forbidden list for this paper type
+				$forbidden_for_paper = array();
+				
+				if ( ! $bw_enabled ) {
+					$forbidden_for_paper[] = 'bw';
+				}
+				if ( ! $color_enabled ) {
+					$forbidden_for_paper[] = 'color';
+				}
+				
+				// Only add to restrictions if there are forbidden types
+				if ( ! empty( $forbidden_for_paper ) ) {
+					$restrictions['forbidden_print_types'][ $paper_type ] = $forbidden_for_paper;
 				}
 			}
 		}
@@ -320,32 +347,33 @@ class Tabesh_Product_Pricing {
 		// Get configured sizes from new pricing engine
 		$configured_sizes = $this->pricing_engine->get_configured_book_sizes();
 
-		// Get default sizes from legacy system
+		// Get default sizes from admin settings (main book_sizes setting)
 		global $wpdb;
 		$table_settings = $wpdb->prefix . 'tabesh_settings';
 
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$result = $wpdb->get_var(
 			$wpdb->prepare(
 				"SELECT setting_value FROM $table_settings WHERE setting_key = %s",
-				'pricing_book_sizes'
+				'book_sizes'
 			)
 		);
 
-		$legacy_sizes = array();
+		$admin_sizes = array();
 		if ( $result ) {
 			$decoded = json_decode( $result, true );
 			if ( JSON_ERROR_NONE === json_last_error() && is_array( $decoded ) ) {
-				$legacy_sizes = array_keys( $decoded );
+				$admin_sizes = $decoded;
 			}
 		}
 
 		// Default sizes if nothing configured
-		if ( empty( $configured_sizes ) && empty( $legacy_sizes ) ) {
+		if ( empty( $configured_sizes ) && empty( $admin_sizes ) ) {
 			return array( 'A5', 'A4', 'B5', 'رقعی', 'وزیری', 'خشتی' );
 		}
 
-		// Merge configured and legacy sizes
-		$all_sizes = array_unique( array_merge( $configured_sizes, $legacy_sizes ) );
+		// Merge configured V2 sizes and admin setting sizes
+		$all_sizes = array_unique( array_merge( $configured_sizes, $admin_sizes ) );
 
 		return $all_sizes;
 	}
@@ -473,6 +501,105 @@ class Tabesh_Product_Pricing {
 		}
 
 		return false !== $result;
+	}
+
+	/**
+	 * Get configured paper types from admin settings
+	 *
+	 * @return array Paper types with weights
+	 */
+	private function get_configured_paper_types() {
+		global $wpdb;
+		$table_settings = $wpdb->prefix . 'tabesh_settings';
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$result = $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT setting_value FROM {$table_settings} WHERE setting_key = %s",
+				'paper_types'
+			)
+		);
+
+		if ( $result ) {
+			$decoded = json_decode( $result, true );
+			if ( JSON_ERROR_NONE === json_last_error() && is_array( $decoded ) ) {
+				return $decoded;
+			}
+		}
+
+		// Default paper types
+		return array(
+			'تحریر' => array( '60', '70', '80' ),
+			'بالک'  => array( '60', '70', '80', '100' ),
+			'گلاسه' => array( '80', '100', '115' ),
+		);
+	}
+
+	/**
+	 * Get configured binding types from admin settings
+	 *
+	 * @return array Binding types
+	 */
+	private function get_configured_binding_types() {
+		global $wpdb;
+		$table_settings = $wpdb->prefix . 'tabesh_settings';
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$result = $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT setting_value FROM {$table_settings} WHERE setting_key = %s",
+				'binding_types'
+			)
+		);
+
+		if ( $result ) {
+			$decoded = json_decode( $result, true );
+			if ( JSON_ERROR_NONE === json_last_error() && is_array( $decoded ) ) {
+				return $decoded;
+			}
+		}
+
+		// Default binding types
+		return array( 'شومیز', 'جلد سخت', 'گالینگور', 'سیمی', 'منگنه' );
+	}
+
+	/**
+	 * Get configured extra services from admin settings
+	 *
+	 * @return array Extra services
+	 */
+	private function get_configured_extra_services() {
+		global $wpdb;
+		$table_settings = $wpdb->prefix . 'tabesh_settings';
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$result = $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT setting_value FROM {$table_settings} WHERE setting_key = %s",
+				'extras'
+			)
+		);
+
+		if ( $result ) {
+			$decoded = json_decode( $result, true );
+			if ( JSON_ERROR_NONE === json_last_error() && is_array( $decoded ) ) {
+				// Filter out invalid values
+				return array_values(
+					array_filter(
+						array_map(
+							function ( $extra ) {
+								$extra = is_scalar( $extra ) ? trim( strval( $extra ) ) : '';
+								return ( ! empty( $extra ) && $extra !== 'on' ) ? $extra : null;
+							},
+							$decoded
+						)
+					)
+				);
+			}
+		}
+
+		// Default extra services
+		return array( 'لب گرد', 'خط تا', 'شیرینک', 'سوراخ', 'شماره گذاری' );
 	}
 
 	/**

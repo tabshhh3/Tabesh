@@ -567,7 +567,13 @@ class Tabesh_Pricing_Engine {
 						$extra_cost = $price * $quantity;
 						break;
 					case 'page_based':
-						$step        = intval( $config['step'] ?? 16000 );
+						// Step represents: price is per X pages
+						// For example, step=100 means price per 100 pages
+						// Default to 100 if not set (price per 100 pages)
+						$step        = intval( $config['step'] ?? 100 );
+						if ( $step <= 0 ) {
+							$step = 100; // Fallback to prevent division by zero
+						}
 						$total_pages = $page_count_total * $quantity;
 						$units       = ceil( $total_pages / $step );
 						$extra_cost  = $price * $units;
