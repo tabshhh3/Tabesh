@@ -77,19 +77,21 @@ class Tabesh_Order {
 	 * @return array Price breakdown
 	 */
 	public function calculate_price( $params ) {
-		// Check if new pricing engine V2 is enabled
-		$pricing_engine_v2 = new Tabesh_Pricing_Engine();
-		if ( $pricing_engine_v2->is_enabled() ) {
+		// Check if new pricing engine V2 is enabled using the static helper method
+		// This is the single source of truth for pricing engine status
+		if ( Tabesh_Pricing_Engine::is_v2_active() ) {
 			// Use new matrix-based pricing engine
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-				error_log( 'Tabesh: Using Pricing Engine V2 (Matrix-based)' );
+				error_log( 'Tabesh Order: Using Pricing Engine V2 (Matrix-based)' );
 			}
-			return $pricing_engine_v2->calculate_price( $params );
+
+			$pricing_engine = new Tabesh_Pricing_Engine();
+			return $pricing_engine->calculate_price( $params );
 		}
 
 		// Fall back to legacy pricing engine (V1)
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-			error_log( 'Tabesh: Using Legacy Pricing Engine V1' );
+			error_log( 'Tabesh Order: Using Legacy Pricing Engine V1' );
 		}
 
 		// Log incoming parameters for debugging
