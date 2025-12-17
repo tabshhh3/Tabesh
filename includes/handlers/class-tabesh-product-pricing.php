@@ -714,6 +714,28 @@ class Tabesh_Product_Pricing {
 	}
 
 	/**
+	 * Get binding cost for a specific combination of binding type and cover weight
+	 *
+	 * Handles both new structure (array of weights) and legacy structure (single value).
+	 *
+	 * @param array  $pricing_matrix Pricing matrix data.
+	 * @param string $binding_type Binding type.
+	 * @param string $cover_weight Cover weight.
+	 * @return float Binding cost (defaults to 0 if not found).
+	 */
+	public function get_binding_cost_for_weight( $pricing_matrix, $binding_type, $cover_weight ) {
+		$binding_data = $pricing_matrix['binding_costs'][ $binding_type ] ?? array();
+
+		if ( is_array( $binding_data ) ) {
+			// New structure: array of weights.
+			return floatval( $binding_data[ $cover_weight ] ?? 0 );
+		}
+
+		// Legacy structure: single cost value - use it as default for all weights.
+		return floatval( $binding_data );
+	}
+
+	/**
 	 * Get the required capability for accessing pricing management
 	 *
 	 * @return string Required capability

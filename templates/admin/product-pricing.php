@@ -236,20 +236,10 @@ $v2_enabled = $this->pricing_engine->is_enabled();
 								<tbody>
 									<?php foreach ( $configured_cover_weights as $cover_weight ) : ?>
 										<?php
-										// Get binding cost for this combination
-										// New structure: binding_costs[binding_type][cover_weight]
-										// Legacy fallback: binding_costs[binding_type] (single value)
-										$binding_data = $pricing_matrix['binding_costs'][ $binding_type ] ?? array();
+										// Get binding cost for this combination using helper method.
+										$cover_cost = $this->get_binding_cost_for_weight( $pricing_matrix, $binding_type, $cover_weight );
 
-										if ( is_array( $binding_data ) ) {
-											// New structure: array of weights
-											$cover_cost = $binding_data[ $cover_weight ] ?? 0;
-										} else {
-											// Legacy structure: single cost value - use it as default for all weights
-											$cover_cost = $binding_data;
-										}
-
-										// Check if this combination is forbidden
+										// Check if this combination is forbidden.
 										$forbidden_weights = $pricing_matrix['restrictions']['forbidden_cover_weights'][ $binding_type ] ?? array();
 										$is_forbidden      = in_array( $cover_weight, $forbidden_weights, true );
 										?>
@@ -570,7 +560,7 @@ jQuery(document).ready(function($) {
 /* Binding-Cover Matrix Grid Layout */
 .binding-cover-matrix {
 	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+	grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
 	gap: 24px;
 	margin-top: 16px;
 }

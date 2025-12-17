@@ -560,7 +560,7 @@ class Tabesh_Pricing_Engine {
 
 				// No weights configured
 				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-					error_log( "Tabesh Pricing Engine V2 WARNING: No cover weights configured for binding type=$binding_type" );
+				error_log( 'Tabesh Pricing Engine V2 WARNING: No cover weights configured for binding type=' . sanitize_text_field( $binding_type ) );
 				}
 				return null;
 			}
@@ -570,7 +570,7 @@ class Tabesh_Pricing_Engine {
 		}
 
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-			error_log( "Tabesh Pricing Engine V2 ERROR: Binding cost not configured for type=$binding_type" );
+		error_log( 'Tabesh Pricing Engine V2 ERROR: Binding cost not configured for type=' . sanitize_text_field( $binding_type ) );
 		}
 
 		return null;
