@@ -179,6 +179,8 @@
             $weightSelect.empty();
             
             if (!tabeshData.v2PricingMatrices || !tabeshData.v2PricingMatrices[bookSize]) {
+                console.error('Tabesh: No V2 pricing matrix found for book size:', bookSize);
+                $weightSelect.append('<option value="">خطا: ماتریس قیمت‌گذاری یافت نشد</option>');
                 return;
             }
             
@@ -186,9 +188,17 @@
             
             if (matrix.paper_types && matrix.paper_types[paperType]) {
                 const weights = matrix.paper_types[paperType];
-                weights.forEach(weight => {
-                    $weightSelect.append(`<option value="${weight}">${weight}g</option>`);
-                });
+                if (weights && weights.length > 0) {
+                    weights.forEach(weight => {
+                        $weightSelect.append(`<option value="${weight}">${weight}g</option>`);
+                    });
+                } else {
+                    console.warn('Tabesh: No weights found for paper type:', paperType);
+                    $weightSelect.append('<option value="">هیچ گرماژی برای این کاغذ تعریف نشده است</option>');
+                }
+            } else {
+                console.warn('Tabesh: Paper type not found in matrix:', paperType, 'for book size:', bookSize);
+                $weightSelect.append('<option value="">این نوع کاغذ برای قطع انتخابی موجود نیست</option>');
             }
         }
 
@@ -212,6 +222,9 @@
                     this.updatePaperWeightsV2(paperType, bookSize);
                     return;
                 }
+                // If V2 is enabled but no book size selected yet, show a message
+                $weightSelect.append('<option value="">لطفاً ابتدا قطع کتاب را انتخاب کنید</option>');
+                return;
             }
             
             // Fallback to V1 method
@@ -221,6 +234,8 @@
                 paperTypes[paperType].forEach(weight => {
                     $weightSelect.append(`<option value="${weight}">${weight}g</option>`);
                 });
+            } else {
+                $weightSelect.append('<option value="">هیچ گرماژی برای این کاغذ تعریف نشده است</option>');
             }
         }
 
