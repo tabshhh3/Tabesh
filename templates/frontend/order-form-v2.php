@@ -43,13 +43,32 @@ $quantity_step = Tabesh()->get_setting( 'quantity_step', 10 );
 		<div class="tabesh-wizard-error">
 			<div class="error-icon">⚠️</div>
 			<h3><?php echo esc_html__( 'خطا در بارگذاری فرم', 'tabesh' ); ?></h3>
-			<p><?php echo esc_html__( 'هیچ قطع کتابی در سیستم قیمت‌گذاری پیکربندی نشده است.', 'tabesh' ); ?></p>
-			<p><?php echo esc_html__( 'لطفاً ابتدا به', 'tabesh' ); ?> 
-				<a href="<?php echo esc_url( admin_url( 'admin.php?page=tabesh-product-pricing' ) ); ?>" class="error-link">
-					<?php echo esc_html__( 'تنظیمات قیمت‌گذاری محصول', 'tabesh' ); ?>
-				</a> 
-				<?php echo esc_html__( 'بروید و ماتریس قیمت را تنظیم کنید.', 'tabesh' ); ?>
-			</p>
+			<p><?php echo esc_html__( 'هیچ قطع کتابی با قیمت‌گذاری فعال در سیستم یافت نشد.', 'tabesh' ); ?></p>
+			
+			<?php if ( current_user_can( 'manage_woocommerce' ) ) : ?>
+				<div style="margin-top: 20px; padding: 15px; background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px;">
+					<h4 style="margin: 0 0 10px 0;"><?php echo esc_html__( 'راهنمای مدیر سیستم:', 'tabesh' ); ?></h4>
+					<ol style="text-align: right; margin: 10px 0;">
+						<li><?php echo esc_html__( 'به', 'tabesh' ); ?> 
+							<a href="<?php echo esc_url( admin_url( 'admin.php?page=tabesh-product-pricing' ) ); ?>" class="error-link">
+								<?php echo esc_html__( 'تنظیمات قیمت‌گذاری محصول', 'tabesh' ); ?>
+							</a> 
+							<?php echo esc_html__( 'بروید', 'tabesh' ); ?>
+						</li>
+						<li><?php echo esc_html__( 'موتور قیمت‌گذاری V2 را فعال کنید', 'tabesh' ); ?></li>
+						<li><?php echo esc_html__( 'برای هر قطع کتاب (A5، A4، رقعی و ...) ماتریس قیمت را تنظیم و ذخیره کنید', 'tabesh' ); ?></li>
+						<li><?php echo esc_html__( 'مطمئن شوید که قطع‌های کتاب در', 'tabesh' ); ?> 
+							<a href="<?php echo esc_url( admin_url( 'admin.php?page=tabesh-settings' ) ); ?>">
+								<?php echo esc_html__( 'تنظیمات محصول', 'tabesh' ); ?>
+							</a>
+							<?php echo esc_html__( 'تعریف شده‌اند', 'tabesh' ); ?>
+						</li>
+					</ol>
+					<p><strong><?php echo esc_html__( 'نکته:', 'tabesh' ); ?></strong> <?php echo esc_html__( 'فقط قطع‌هایی که هم در تنظیمات محصول تعریف شده‌اند و هم ماتریس قیمت دارند، در فرم سفارش نمایش داده می‌شوند.', 'tabesh' ); ?></p>
+				</div>
+			<?php else : ?>
+				<p><?php echo esc_html__( 'لطفاً با مدیر سیستم تماس بگیرید.', 'tabesh' ); ?></p>
+			<?php endif; ?>
 		</div>
 	<?php else : ?>
 

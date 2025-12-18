@@ -453,12 +453,33 @@ class Tabesh_Constraint_Manager {
 	 *
 	 * @return array Array of book sizes with their basic constraints and pricing status.
 	 */
+	/**
+	 * Get available book sizes for order form
+	 *
+	 * Returns only book sizes that:
+	 * 1. Are defined in product parameters (source of truth)
+	 * 2. Have pricing matrices configured
+	 * 3. Have at least one allowed combination of parameters
+	 *
+	 * @return array Array of available book sizes with metadata
+	 */
 	public function get_available_book_sizes() {
 		// Get ALL book sizes from product parameters (source of truth)
 		$all_book_sizes = $this->get_book_sizes_from_product_parameters();
 
 		// Get book sizes that have pricing configured
 		$configured_sizes = $this->pricing_engine->get_configured_book_sizes();
+
+		// Log for debugging
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			error_log(
+				sprintf(
+					'Tabesh Constraint Manager: Product parameters have %d sizes, Pricing engine has %d configured matrices',
+					count( $all_book_sizes ),
+					count( $configured_sizes )
+				)
+			);
+		}
 
 		$result = array();
 		foreach ( $all_book_sizes as $size ) {
@@ -479,9 +500,29 @@ class Tabesh_Constraint_Manager {
 						'has_pricing'      => true,
 						'enabled'          => true,
 					);
+
+					if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+						error_log(
+							sprintf(
+								'Tabesh: Size "%s" is available - %d papers, %d bindings',
+								$size,
+								count( $allowed_options['allowed_papers'] ?? array() ),
+								count( $allowed_options['allowed_bindings'] ?? array() )
+							)
+						);
+					}
+				} elseif ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+						error_log(
+							sprintf(
+								'Tabesh: Size "%s" has pricing but returned error: %s',
+								$size,
+								$allowed_options['message'] ?? 'unknown error'
+							)
+						);
 				}
 			} else {
 				// Include sizes without pricing but mark them as disabled
+				// This helps admin see which sizes need configuration
 				$result[] = array(
 					'size'             => $size,
 					'slug'             => $this->slugify( $size ),
@@ -491,7 +532,36 @@ class Tabesh_Constraint_Manager {
 					'has_pricing'      => false,
 					'enabled'          => false,
 				);
+
+				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+					error_log(
+						sprintf(
+							'Tabesh: Size "%s" exists in product parameters but has no pricing matrix',
+							$size
+						)
+					);
+				}
 			}
+		}
+
+		// Final log
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			$enabled_count = count(
+				array_filter(
+					$result,
+					function ( $item ) {
+						return $item['enabled'];
+					}
+				)
+			);
+			error_log(
+				sprintf(
+					'Tabesh Constraint Manager: Returning %d total sizes (%d enabled, %d disabled)',
+					count( $result ),
+					$enabled_count,
+					count( $result ) - $enabled_count
+				)
+			);
 		}
 
 		return $result;
