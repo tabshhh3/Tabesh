@@ -16,8 +16,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 // Get current book size from query param or default to first available.
 // CRITICAL: Validate that the book size is in the allowed list to prevent data corruption.
 $requested_book_size = isset( $_GET['book_size'] ) ? sanitize_text_field( wp_unslash( $_GET['book_size'] ) ) : '';
-$current_book_size   = ( ! empty( $requested_book_size ) && in_array( $requested_book_size, $book_sizes, true ) ) 
-	? $requested_book_size 
+$current_book_size   = ( ! empty( $requested_book_size ) && in_array( $requested_book_size, $book_sizes, true ) )
+	? $requested_book_size
 	: ( $book_sizes[0] ?? 'A5' );
 
 // Get pricing matrix for current book size.

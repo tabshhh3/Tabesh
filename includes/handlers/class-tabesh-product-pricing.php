@@ -117,7 +117,7 @@ class Tabesh_Product_Pricing {
 					implode( '، ', $valid_book_sizes )
 				)
 			) . '</div>';
-			
+
 			// Log this security issue
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 				error_log(
@@ -128,7 +128,7 @@ class Tabesh_Product_Pricing {
 					)
 				);
 			}
-			
+
 			return;
 		}
 

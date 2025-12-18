@@ -447,7 +447,7 @@ class Tabesh_Constraint_Manager {
 	 * Get available book sizes with their allowed options
 	 *
 	 * This is useful for the initial form load to show all valid book sizes.
-	 * 
+	 *
 	 * FIXED: Now returns ALL book sizes from product parameters, with pricing
 	 * status indicated. This prevents the form from only showing corrupted entries.
 	 *
@@ -456,7 +456,7 @@ class Tabesh_Constraint_Manager {
 	public function get_available_book_sizes() {
 		// Get ALL book sizes from product parameters (source of truth)
 		$all_book_sizes = $this->get_book_sizes_from_product_parameters();
-		
+
 		// Get book sizes that have pricing configured
 		$configured_sizes = $this->pricing_engine->get_configured_book_sizes();
 
@@ -464,7 +464,7 @@ class Tabesh_Constraint_Manager {
 		foreach ( $all_book_sizes as $size ) {
 			// Check if this size has pricing configured
 			$has_pricing = in_array( $size, $configured_sizes, true );
-			
+
 			if ( $has_pricing ) {
 				// Get allowed options for sizes with pricing
 				$allowed_options = $this->get_allowed_options( array(), $size );
@@ -499,7 +499,7 @@ class Tabesh_Constraint_Manager {
 
 	/**
 	 * Get book sizes from product parameters (source of truth)
-	 * 
+	 *
 	 * This is the authoritative source for which book sizes exist in the system.
 	 *
 	 * @return array Array of book size names.
@@ -511,7 +511,7 @@ class Tabesh_Constraint_Manager {
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$result = $wpdb->get_var(
 			$wpdb->prepare(
-				"SELECT setting_value FROM {$table_settings} WHERE setting_key = %s",
+				"SELECT setting_value FROM {$wpdb->prefix}tabesh_settings WHERE setting_key = %s",
 				'book_sizes'
 			)
 		);
