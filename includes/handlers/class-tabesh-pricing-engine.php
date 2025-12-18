@@ -868,10 +868,10 @@ class Tabesh_Pricing_Engine {
 	/**
 	 * Get pricing matrix for a specific book size
 	 *
-	 * @param string $book_size Book size identifier
-	 * @return array|null Pricing matrix or null if not found
+	 * @param string $book_size Book size identifier.
+	 * @return array|null Pricing matrix or null if not found.
 	 */
-	private function get_pricing_matrix( $book_size ) {
+	public function get_pricing_matrix( $book_size ) {
 		// Return cached matrix if available
 		if ( null !== self::$pricing_matrix_cache ) {
 			return self::$pricing_matrix_cache[ $book_size ] ?? null;

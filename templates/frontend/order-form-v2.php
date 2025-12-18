@@ -20,8 +20,18 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // Get constraint manager to fetch available book sizes.
-$constraint_manager = new Tabesh_Constraint_Manager();
-$available_sizes    = $constraint_manager->get_available_book_sizes();
+// Wrap in try-catch to prevent fatal errors from breaking the entire page.
+try {
+	$constraint_manager = new Tabesh_Constraint_Manager();
+	$available_sizes    = $constraint_manager->get_available_book_sizes();
+} catch ( Exception $e ) {
+	// Log the error for debugging.
+	if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+		error_log( 'Tabesh Order Form V2 Error: ' . $e->getMessage() );
+	}
+	// Set empty array to show error message in form.
+	$available_sizes = array();
+}
 
 // Scalar settings.
 $min_quantity  = Tabesh()->get_setting( 'min_quantity', 10 );
