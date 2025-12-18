@@ -2544,7 +2544,10 @@ final class Tabesh {
 				// Get pricing matrix directly from engine
 				global $wpdb;
 				$table_settings = $wpdb->prefix . 'tabesh_settings';
-				$setting_key    = 'pricing_matrix_' . sanitize_key( $book_size );
+				
+				// CRITICAL FIX: Use base64_encode to match save_pricing_matrix() method
+				$safe_key    = base64_encode( $book_size );
+				$setting_key = 'pricing_matrix_' . $safe_key;
 
 				// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 				$result = $wpdb->get_var(
