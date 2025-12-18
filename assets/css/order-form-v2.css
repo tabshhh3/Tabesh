@@ -2,10 +2,32 @@
  * Order Form V2 Styles - Dynamic Dependency Mapping
  *
  * RTL-first design for Persian language support
- * Responsive and accessible form styling
+ * Modern CSS Grid layout with responsive design
+ * Professional Tabesh branding
  *
  * @package Tabesh
  */
+
+/* CSS Custom Properties for Tabesh Branding */
+:root {
+	--tabesh-primary: #0073aa;
+	--tabesh-primary-dark: #005a87;
+	--tabesh-primary-light: #e7f3ff;
+	--tabesh-success: #00a32a;
+	--tabesh-success-dark: #008a20;
+	--tabesh-danger: #d63638;
+	--tabesh-warning: #f0b849;
+	--tabesh-text: #1a1a1a;
+	--tabesh-text-light: #666;
+	--tabesh-border: #ddd;
+	--tabesh-bg: #fff;
+	--tabesh-bg-alt: #f9f9f9;
+	--tabesh-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+	--tabesh-shadow-hover: 0 4px 16px rgba(0, 115, 170, 0.15);
+	--tabesh-radius: 12px;
+	--tabesh-radius-sm: 6px;
+	--tabesh-transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
 
 /* Container */
 .tabesh-order-form-v2 {
@@ -13,57 +35,111 @@
 	margin: 2rem auto;
 	padding: 0 1rem;
 	direction: rtl;
-	font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Tahoma, sans-serif;
+	font-family: 'Vazirmatn', 'Vazir', -apple-system, BlinkMacSystemFont, 'Segoe UI', Tahoma, sans-serif;
 }
 
 .tabesh-form-container {
-	background: #fff;
-	border-radius: 12px;
-	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+	background: var(--tabesh-bg);
+	border-radius: var(--tabesh-radius);
+	box-shadow: var(--tabesh-shadow);
 	padding: 2rem;
+	position: relative;
+	overflow: hidden;
+}
+
+.tabesh-form-container::before {
+	content: '';
+	position: absolute;
+	top: 0;
+	right: 0;
+	width: 100%;
+	height: 4px;
+	background: linear-gradient(90deg, var(--tabesh-primary) 0%, var(--tabesh-success) 100%);
 }
 
 .tabesh-form-title {
-	font-size: 1.75rem;
+	font-size: 1.875rem;
 	font-weight: 700;
-	color: #1a1a1a;
+	color: var(--tabesh-text);
 	margin-bottom: 0.5rem;
 	text-align: center;
+	position: relative;
 }
 
 .tabesh-form-subtitle {
 	text-align: center;
-	color: #666;
+	color: var(--tabesh-text-light);
 	margin-bottom: 2rem;
-	font-size: 0.95rem;
+	font-size: 1rem;
+	line-height: 1.6;
 }
 
 /* Form Steps */
 .tabesh-form-v2 {
 	position: relative;
+	display: grid;
+	gap: 1.5rem;
 }
 
 .tabesh-form-step-v2 {
-	margin-bottom: 2rem;
-	padding: 1.5rem;
-	background: #f9f9f9;
-	border-radius: 8px;
-	border-right: 4px solid #0073aa;
-	transition: all 0.3s ease;
+	margin-bottom: 0;
+	padding: 1.75rem;
+	background: var(--tabesh-bg-alt);
+	border-radius: var(--tabesh-radius-sm);
+	border-right: 4px solid var(--tabesh-primary);
+	transition: var(--tabesh-transition);
+	transform-origin: top;
+	animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+	from {
+		opacity: 0;
+		transform: translateY(-10px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
 }
 
 .tabesh-form-step-v2:hover {
 	background: #f5f5f5;
-	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+	box-shadow: var(--tabesh-shadow);
+	transform: translateX(-2px);
 }
 
 .step-title {
-	font-size: 1.25rem;
+	font-size: 1.375rem;
 	font-weight: 600;
-	color: #0073aa;
-	margin-bottom: 1rem;
-	padding-bottom: 0.5rem;
+	color: var(--tabesh-primary);
+	margin-bottom: 1.25rem;
+	padding-bottom: 0.75rem;
 	border-bottom: 2px solid #e0e0e0;
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+}
+
+.step-title::before {
+	content: '';
+	display: inline-block;
+	width: 8px;
+	height: 8px;
+	background: var(--tabesh-primary);
+	border-radius: 50%;
+	animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+	0%, 100% {
+		opacity: 1;
+		transform: scale(1);
+	}
+	50% {
+		opacity: 0.5;
+		transform: scale(1.2);
+	}
 }
 
 /* Form Groups */
@@ -96,21 +172,29 @@
 .tabesh-select-v2,
 .tabesh-textarea-v2 {
 	width: 100%;
-	padding: 0.75rem 1rem;
-	border: 2px solid #ddd;
-	border-radius: 6px;
+	padding: 0.875rem 1.125rem;
+	border: 2px solid var(--tabesh-border);
+	border-radius: var(--tabesh-radius-sm);
 	font-size: 1rem;
-	transition: all 0.2s ease;
-	background: #fff;
-	color: #333;
+	font-family: inherit;
+	transition: var(--tabesh-transition);
+	background: var(--tabesh-bg);
+	color: var(--tabesh-text);
+	outline: none;
+}
+
+.tabesh-input-v2:hover,
+.tabesh-select-v2:hover,
+.tabesh-textarea-v2:hover {
+	border-color: var(--tabesh-primary-light);
 }
 
 .tabesh-input-v2:focus,
 .tabesh-select-v2:focus,
 .tabesh-textarea-v2:focus {
-	outline: none;
-	border-color: #0073aa;
-	box-shadow: 0 0 0 3px rgba(0, 115, 170, 0.1);
+	border-color: var(--tabesh-primary);
+	box-shadow: 0 0 0 4px rgba(0, 115, 170, 0.1);
+	transform: translateY(-1px);
 }
 
 .tabesh-input-v2:disabled,
@@ -118,159 +202,258 @@
 	background: #f5f5f5;
 	cursor: not-allowed;
 	opacity: 0.6;
+	border-color: #e0e0e0;
 }
 
 .tabesh-textarea-v2 {
 	resize: vertical;
-	min-height: 100px;
+	min-height: 120px;
+	line-height: 1.6;
 }
 
 /* Checkboxes */
 .tabesh-checkbox-v2 {
 	display: flex;
 	align-items: center;
-	padding: 0.75rem;
-	margin-bottom: 0.5rem;
-	background: #fff;
+	padding: 0.875rem 1rem;
+	margin-bottom: 0.625rem;
+	background: var(--tabesh-bg);
 	border: 2px solid #e0e0e0;
-	border-radius: 6px;
+	border-radius: var(--tabesh-radius-sm);
 	cursor: pointer;
-	transition: all 0.2s ease;
+	transition: var(--tabesh-transition);
 }
 
 .tabesh-checkbox-v2:hover {
-	background: #f9f9f9;
-	border-color: #0073aa;
+	background: var(--tabesh-primary-light);
+	border-color: var(--tabesh-primary);
+	transform: translateX(-3px);
 }
 
 .tabesh-checkbox-v2 input[type="checkbox"] {
-	margin-left: 0.75rem;
+	margin-left: 0.875rem;
 	margin-right: 0;
 	width: 20px;
 	height: 20px;
 	cursor: pointer;
+	accent-color: var(--tabesh-primary);
 }
 
 .tabesh-checkbox-v2 span {
 	flex: 1;
-	font-size: 0.95rem;
-	color: #333;
+	font-size: 1rem;
+	color: var(--tabesh-text);
+	font-weight: 500;
 }
 
 .no-extras {
-	color: #666;
+	color: var(--tabesh-text-light);
 	font-style: italic;
-	padding: 1rem;
+	padding: 1.25rem;
 	text-align: center;
+	background: var(--tabesh-bg-alt);
+	border-radius: var(--tabesh-radius-sm);
 }
 
 /* Buttons */
 .tabesh-btn-v2 {
-	padding: 0.875rem 1.75rem;
+	padding: 1rem 2rem;
 	border: none;
-	border-radius: 6px;
-	font-size: 1rem;
+	border-radius: var(--tabesh-radius-sm);
+	font-size: 1.0625rem;
 	font-weight: 600;
+	font-family: inherit;
 	cursor: pointer;
-	transition: all 0.2s ease;
+	transition: var(--tabesh-transition);
 	text-align: center;
-	display: inline-block;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 0.5rem;
+	position: relative;
+	overflow: hidden;
+}
+
+.tabesh-btn-v2::before {
+	content: '';
+	position: absolute;
+	top: 50%;
+	right: 50%;
+	width: 0;
+	height: 0;
+	border-radius: 50%;
+	background: rgba(255, 255, 255, 0.2);
+	transform: translate(50%, -50%);
+	transition: width 0.6s, height 0.6s;
+}
+
+.tabesh-btn-v2:hover::before {
+	width: 300px;
+	height: 300px;
 }
 
 .tabesh-btn-primary {
-	background: #0073aa;
+	background: linear-gradient(135deg, var(--tabesh-primary) 0%, var(--tabesh-primary-dark) 100%);
 	color: #fff;
+	box-shadow: 0 2px 8px rgba(0, 115, 170, 0.2);
 }
 
 .tabesh-btn-primary:hover:not(:disabled) {
-	background: #005a87;
-	transform: translateY(-1px);
-	box-shadow: 0 4px 8px rgba(0, 115, 170, 0.3);
+	transform: translateY(-2px);
+	box-shadow: 0 6px 20px rgba(0, 115, 170, 0.3);
+}
+
+.tabesh-btn-primary:active:not(:disabled) {
+	transform: translateY(0);
+	box-shadow: 0 2px 8px rgba(0, 115, 170, 0.2);
 }
 
 .tabesh-btn-success {
-	background: #00a32a;
+	background: linear-gradient(135deg, var(--tabesh-success) 0%, var(--tabesh-success-dark) 100%);
 	color: #fff;
+	box-shadow: 0 2px 8px rgba(0, 163, 42, 0.2);
 }
 
 .tabesh-btn-success:hover:not(:disabled) {
-	background: #008a20;
-	transform: translateY(-1px);
-	box-shadow: 0 4px 8px rgba(0, 163, 42, 0.3);
+	transform: translateY(-2px);
+	box-shadow: 0 6px 20px rgba(0, 163, 42, 0.3);
+}
+
+.tabesh-btn-success:active:not(:disabled) {
+	transform: translateY(0);
+	box-shadow: 0 2px 8px rgba(0, 163, 42, 0.2);
 }
 
 .tabesh-btn-v2:disabled {
 	opacity: 0.5;
 	cursor: not-allowed;
 	background: #ccc;
+	box-shadow: none;
+	transform: none;
 }
 
 /* Price Display */
 .tabesh-price-display-v2 {
-	margin-top: 2rem;
-	padding: 2rem;
+	margin-top: 2.5rem;
+	padding: 2.5rem;
 	background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-	border-radius: 12px;
+	border-radius: var(--tabesh-radius);
 	color: #fff;
+	box-shadow: 0 8px 32px rgba(102, 126, 234, 0.3);
+	position: relative;
+	overflow: hidden;
+}
+
+.tabesh-price-display-v2::before {
+	content: '';
+	position: absolute;
+	top: -50%;
+	left: -50%;
+	width: 200%;
+	height: 200%;
+	background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
+	animation: rotate 20s linear infinite;
+}
+
+@keyframes rotate {
+	from {
+		transform: rotate(0deg);
+	}
+	to {
+		transform: rotate(360deg);
+	}
+}
+
+.tabesh-price-display-v2 > * {
+	position: relative;
+	z-index: 1;
 }
 
 .tabesh-price-display-v2 h3 {
-	font-size: 1.5rem;
+	font-size: 1.75rem;
 	font-weight: 700;
-	margin-bottom: 1rem;
+	margin-bottom: 1.25rem;
 	text-align: center;
+	text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .price-info {
-	background: rgba(255, 255, 255, 0.1);
-	padding: 0.75rem;
-	border-radius: 6px;
-	margin-bottom: 1.5rem;
+	background: rgba(255, 255, 255, 0.15);
+	padding: 1rem;
+	border-radius: var(--tabesh-radius-sm);
+	margin-bottom: 1.75rem;
+	backdrop-filter: blur(10px);
+	border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .price-info .info-text {
 	margin: 0;
-	font-size: 0.9rem;
+	font-size: 0.9375rem;
 	text-align: center;
-	opacity: 0.9;
+	opacity: 0.95;
+	line-height: 1.6;
 }
 
 .tabesh-price-details-v2 {
-	background: rgba(255, 255, 255, 0.15);
-	padding: 1.5rem;
-	border-radius: 8px;
-	margin-bottom: 1.5rem;
+	background: rgba(255, 255, 255, 0.2);
+	padding: 1.75rem;
+	border-radius: var(--tabesh-radius-sm);
+	margin-bottom: 1.75rem;
+	backdrop-filter: blur(10px);
+	border: 1px solid rgba(255, 255, 255, 0.25);
 }
 
 .tabesh-price-details-v2 .price-row {
 	display: flex;
 	justify-content: space-between;
-	padding: 0.75rem 0;
+	align-items: center;
+	padding: 1rem 0;
 	border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+	gap: 1rem;
 }
 
 .tabesh-price-details-v2 .price-row:last-child {
 	border-bottom: none;
-	padding-top: 1rem;
-	margin-top: 0.5rem;
-	border-top: 2px solid rgba(255, 255, 255, 0.3);
+	padding-top: 1.25rem;
+	margin-top: 0.75rem;
+	border-top: 2px solid rgba(255, 255, 255, 0.35);
+}
+
+.tabesh-price-details-v2 .price-row span:first-child {
+	font-weight: 500;
+	font-size: 1rem;
 }
 
 .tabesh-price-details-v2 .price-value {
 	font-weight: 700;
-	font-size: 1.1rem;
+	font-size: 1.1875rem;
+	text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
 .tabesh-price-details-v2 .price-value.total {
-	font-size: 1.5rem;
+	font-size: 1.75rem;
 	color: #ffd700;
+	animation: glow 2s ease-in-out infinite;
+}
+
+@keyframes glow {
+	0%, 100% {
+		text-shadow: 0 0 10px rgba(255, 215, 0, 0.5), 0 0 20px rgba(255, 215, 0, 0.3);
+	}
+	50% {
+		text-shadow: 0 0 20px rgba(255, 215, 0, 0.8), 0 0 30px rgba(255, 215, 0, 0.5);
+	}
 }
 
 /* Price Breakdown */
 .price-breakdown-v2 {
-	background: rgba(255, 255, 255, 0.1);
-	padding: 1rem;
-	border-radius: 8px;
+	background: rgba(255, 255, 255, 0.15);
+	padding: 1.25rem;
+	border-radius: var(--tabesh-radius-sm);
+	margin-bottom: 1.5rem;
+	backdrop-filter: blur(10px);
+	border: 1px solid rgba(255, 255, 255, 0.2);
+}
 	margin-bottom: 1.5rem;
 }
 
@@ -347,69 +530,109 @@
 
 /* Messages */
 .tabesh-form-messages {
-	margin-top: 1rem;
+	margin-top: 1.25rem;
 }
 
 .tabesh-message {
-	padding: 1rem 1.25rem;
-	border-radius: 6px;
+	padding: 1.25rem 1.5rem;
+	border-radius: var(--tabesh-radius-sm);
 	margin-bottom: 1rem;
 	border-right: 4px solid;
+	animation: slideInRight 0.3s ease-out;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+	display: flex;
+	align-items: flex-start;
+	gap: 0.875rem;
+}
+
+@keyframes slideInRight {
+	from {
+		opacity: 0;
+		transform: translateX(20px);
+	}
+	to {
+		opacity: 1;
+		transform: translateX(0);
+	}
 }
 
 .tabesh-message.error {
 	background: #fee;
-	border-color: #d63638;
+	border-color: var(--tabesh-danger);
 	color: #8a0000;
 }
 
 .tabesh-message.success {
-	background: #efe;
-	border-color: #00a32a;
+	background: #e7f7ef;
+	border-color: var(--tabesh-success);
 	color: #006400;
 }
 
 .tabesh-message p {
 	margin: 0;
-	font-size: 0.95rem;
+	font-size: 1rem;
+	line-height: 1.5;
+	flex: 1;
 }
 
 .tabesh-message strong {
 	font-weight: 700;
+	display: block;
+	margin-bottom: 0.25rem;
 }
 
 /* Responsive Design */
+@media (max-width: 992px) {
+	.tabesh-order-form-v2 {
+		padding: 0 0.75rem;
+	}
+	
+	.tabesh-form-step-v2 {
+		padding: 1.5rem 1.25rem;
+	}
+}
+
 @media (max-width: 768px) {
 	.tabesh-form-container {
-		padding: 1.5rem 1rem;
+		padding: 1.75rem 1.25rem;
 	}
 
 	.tabesh-form-title {
-		font-size: 1.5rem;
+		font-size: 1.625rem;
+	}
+	
+	.tabesh-form-subtitle {
+		font-size: 0.9375rem;
 	}
 
 	.tabesh-form-step-v2 {
-		padding: 1rem;
+		padding: 1.25rem 1rem;
 	}
 
 	.step-title {
-		font-size: 1.1rem;
+		font-size: 1.1875rem;
 	}
 
 	.price-actions {
 		flex-direction: column;
+		gap: 0.875rem;
 	}
 
 	.price-actions .tabesh-btn-v2 {
 		width: 100%;
+		min-width: unset;
 	}
 
 	.tabesh-price-display-v2 {
-		padding: 1.5rem 1rem;
+		padding: 2rem 1.5rem;
 	}
 
 	.tabesh-price-display-v2 h3 {
-		font-size: 1.25rem;
+		font-size: 1.5rem;
+	}
+	
+	.tabesh-price-details-v2 .price-value.total {
+		font-size: 1.5rem;
 	}
 }
 
@@ -420,27 +643,53 @@
 	}
 
 	.tabesh-form-container {
-		padding: 1rem 0.75rem;
-		border-radius: 8px;
+		padding: 1.25rem 0.875rem;
+		border-radius: var(--tabesh-radius-sm);
 	}
 
 	.tabesh-form-title {
-		font-size: 1.25rem;
+		font-size: 1.375rem;
 	}
 
 	.tabesh-form-subtitle {
-		font-size: 0.85rem;
+		font-size: 0.875rem;
+		margin-bottom: 1.5rem;
+	}
+	
+	.tabesh-form-step-v2 {
+		padding: 1rem 0.875rem;
+	}
+	
+	.step-title {
+		font-size: 1.0625rem;
 	}
 
 	.tabesh-input-v2,
 	.tabesh-select-v2 {
-		font-size: 0.9rem;
-		padding: 0.625rem 0.875rem;
+		font-size: 0.9375rem;
+		padding: 0.75rem 1rem;
 	}
 
 	.tabesh-btn-v2 {
-		padding: 0.75rem 1.25rem;
-		font-size: 0.9rem;
+		padding: 0.875rem 1.5rem;
+		font-size: 0.9375rem;
+	}
+	
+	.tabesh-price-display-v2 {
+		padding: 1.75rem 1.25rem;
+		margin-top: 2rem;
+	}
+	
+	.tabesh-price-details-v2 {
+		padding: 1.25rem;
+	}
+	
+	.tabesh-price-details-v2 .price-value {
+		font-size: 1rem;
+	}
+	
+	.tabesh-price-details-v2 .price-value.total {
+		font-size: 1.375rem;
 	}
 }
 
@@ -448,20 +697,92 @@
 .tabesh-input-v2:focus-visible,
 .tabesh-select-v2:focus-visible,
 .tabesh-textarea-v2:focus-visible,
-.tabesh-btn-v2:focus-visible {
-	outline: 3px solid #0073aa;
+.tabesh-btn-v2:focus-visible,
+.tabesh-checkbox-v2:focus-within {
+	outline: 3px solid var(--tabesh-primary);
 	outline-offset: 2px;
+}
+
+/* Screen reader only */
+.sr-only {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	padding: 0;
+	margin: -1px;
+	overflow: hidden;
+	clip: rect(0, 0, 0, 0);
+	white-space: nowrap;
+	border-width: 0;
+}
+
+/* Reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.01ms !important;
+	}
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+	.tabesh-form-container {
+		background: #1a1a1a;
+		color: #f5f5f5;
+	}
+	
+	.tabesh-form-step-v2 {
+		background: #2a2a2a;
+		border-color: #667eea;
+	}
+	
+	.tabesh-input-v2,
+	.tabesh-select-v2,
+	.tabesh-textarea-v2 {
+		background: #2a2a2a;
+		border-color: #444;
+		color: #f5f5f5;
+	}
+	
+	.tabesh-checkbox-v2 {
+		background: #2a2a2a;
+		border-color: #444;
+	}
+	
+	.step-title,
+	.tabesh-form-title {
+		color: #f5f5f5;
+	}
 }
 
 /* Print Styles */
 @media print {
 	.tabesh-loading-overlay,
-	.price-actions {
+	.price-actions,
+	.tabesh-form-step-v2[data-step="10"] {
 		display: none !important;
 	}
 
 	.tabesh-price-display-v2 {
-		background: #f5f5f5;
-		color: #333;
+		background: #f9f9f9 !important;
+		color: #333 !important;
+		box-shadow: none !important;
+		border: 2px solid #ddd;
+	}
+	
+	.tabesh-price-display-v2 * {
+		color: #333 !important;
+	}
+	
+	.tabesh-form-container {
+		box-shadow: none;
+		border: 1px solid #ddd;
+	}
+	
+	.tabesh-form-step-v2 {
+		page-break-inside: avoid;
 	}
 }
