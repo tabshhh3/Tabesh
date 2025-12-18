@@ -44,8 +44,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // Prevent running in production without confirmation
-if ( ! defined( 'WP_CLI' ) && ! isset( $_GET['confirm'] ) && php_sapi_name() !== 'cli' ) {
-	die( "This is a data cleanup script. Please run via WP-CLI or add ?confirm=yes to the URL if you're absolutely sure.\n" );
+if ( ! defined( 'WP_CLI' ) && php_sapi_name() !== 'cli' ) {
+	$confirm_param = isset( $_GET['confirm'] ) ? sanitize_text_field( wp_unslash( $_GET['confirm'] ) ) : '';
+	if ( 'yes' !== $confirm_param ) {
+		die( "This is a data cleanup script. Please run via WP-CLI or add ?confirm=yes to the URL if you're absolutely sure.\n" );
+	}
 }
 
 echo "=== Tabesh Pricing Matrix Cleanup Script ===\n";
@@ -146,12 +149,18 @@ echo "Corrupted matrices deleted: {$deleted_count}\n";
 
 if ( $deleted_count > 0 ) {
 	echo "\n✓ Cleanup completed successfully!\n";
-	echo "The pricing engine cache has been cleared.\n";
-	
+	echo "The pricing engine cache will be cleared.\n";
+
 	// Clear pricing engine cache if class exists
 	if ( class_exists( 'Tabesh_Pricing_Engine' ) ) {
-		Tabesh_Pricing_Engine::clear_cache();
-		echo "Pricing engine cache cleared.\n";
+		try {
+			Tabesh_Pricing_Engine::clear_cache();
+			echo "Pricing engine cache cleared.\n";
+		} catch ( Exception $e ) {
+			echo "Warning: Could not clear pricing engine cache: " . $e->getMessage() . "\n";
+		}
+	} else {
+		echo "Note: Tabesh_Pricing_Engine class not found. Cache not cleared.\n";
 	}
 } else {
 	echo "\n✓ No corrupted matrices found. Database is clean!\n";

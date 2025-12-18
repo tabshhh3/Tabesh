@@ -511,7 +511,7 @@ class Tabesh_Constraint_Manager {
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$result = $wpdb->get_var(
 			$wpdb->prepare(
-				"SELECT setting_value FROM {$wpdb->prefix}tabesh_settings WHERE setting_key = %s",
+				"SELECT setting_value FROM {$table_settings} WHERE setting_key = %s",
 				'book_sizes'
 			)
 		);

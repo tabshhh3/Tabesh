@@ -96,17 +96,22 @@ $quantity_step = Tabesh()->get_setting( 'quantity_step', 10 );
 						<?php endforeach; ?>
 					</select>
 					<p class="tabesh-field-hint">
-						<?php echo esc_html__( 'پس از انتخاب قطع، گزینه‌های مجاز نمایش داده می‌شوند.', 'tabesh' ); ?>
 						<?php
-						if ( count(
+						echo esc_html__( 'پس از انتخاب قطع، گزینه‌های مجاز نمایش داده می‌شوند.', 'tabesh' );
+
+						// Check if there are any disabled book sizes.
+						$has_disabled_sizes = count(
 							array_filter(
 								$available_sizes,
 								function ( $s ) {
-									return ! $s['enabled']; }
+									return ! $s['enabled'];
+								}
 							)
-						) > 0 ) :
+						) > 0;
+
+						if ( $has_disabled_sizes ) :
 							?>
-							<br><strong><?php echo esc_html__( 'توجه:', 'tabesh' ); ?></strong> 
+							<br><strong><?php echo esc_html__( 'توجه:', 'tabesh' ); ?></strong>
 							<?php echo esc_html__( 'قطع‌های غیرفعال نیاز به قیمت‌گذاری در پنل مدیریت دارند.', 'tabesh' ); ?>
 						<?php endif; ?>
 					</p>
