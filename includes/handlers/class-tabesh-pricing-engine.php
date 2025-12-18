@@ -881,8 +881,12 @@ class Tabesh_Pricing_Engine {
 		$table_settings = $wpdb->prefix . 'tabesh_settings';
 
 		// Load all pricing matrices
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$result = $wpdb->get_results(
-			"SELECT setting_key, setting_value FROM $table_settings WHERE setting_key LIKE 'pricing_matrix_%'",
+			$wpdb->prepare(
+				"SELECT setting_key, setting_value FROM {$table_settings} WHERE setting_key LIKE %s",
+				'pricing_matrix_%'
+			),
 			ARRAY_A
 		);
 
@@ -898,6 +902,11 @@ class Tabesh_Pricing_Engine {
 			if ( JSON_ERROR_NONE === json_last_error() && is_array( $decoded ) ) {
 				self::$pricing_matrix_cache[ $size ] = $decoded;
 			}
+		}
+
+		// Debug logging if WP_DEBUG is enabled
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			error_log( 'Tabesh Pricing Engine V2: get_pricing_matrix loaded ' . count( self::$pricing_matrix_cache ) . ' matrices from database' );
 		}
 
 		return self::$pricing_matrix_cache[ $book_size ] ?? null;
@@ -1134,8 +1143,12 @@ class Tabesh_Pricing_Engine {
 		global $wpdb;
 		$table_settings = $wpdb->prefix . 'tabesh_settings';
 
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$results = $wpdb->get_results(
-			"SELECT setting_key FROM $table_settings WHERE setting_key LIKE 'pricing_matrix_%'",
+			$wpdb->prepare(
+				"SELECT setting_key FROM {$table_settings} WHERE setting_key LIKE %s",
+				'pricing_matrix_%'
+			),
 			ARRAY_A
 		);
 
@@ -1143,6 +1156,11 @@ class Tabesh_Pricing_Engine {
 		foreach ( $results as $row ) {
 			$size    = str_replace( 'pricing_matrix_', '', $row['setting_key'] );
 			$sizes[] = $size;
+		}
+
+		// Debug logging if WP_DEBUG is enabled
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			error_log( 'Tabesh Pricing Engine V2: get_configured_book_sizes found ' . count( $sizes ) . ' book sizes: ' . implode( ', ', $sizes ) );
 		}
 
 		return $sizes;
