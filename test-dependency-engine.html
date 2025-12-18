@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="fa">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تست موتور منطق شرطی V2</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Tahoma', 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            opacity: 0.9;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .step {
+            display: none;
+            animation: fadeIn 0.3s ease-in;
+        }
+        
+        .step.active {
+            display: block;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #333;
+        }
+        
+        select, input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        
+        select:focus, input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        .button:hover {
+            transform: translateY(-2px);
+        }
+        
+        .button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .button-secondary {
+            background: #6c757d;
+            margin-left: 10px;
+        }
+        
+        .progress {
+            height: 4px;
+            background: #e0e0e0;
+            margin-bottom: 30px;
+            border-radius: 2px;
+            overflow: hidden;
+        }
+        
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .alert-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .loading::after {
+            content: '...';
+            animation: dots 1.5s steps(4, end) infinite;
+        }
+        
+        @keyframes dots {
+            0%, 20% { content: '.'; }
+            40% { content: '..'; }
+            60%, 100% { content: '...'; }
+        }
+        
+        .result-card {
+            background: #f8f9fa;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        
+        .result-card h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+        
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .result-item:last-child {
+            border-bottom: none;
+        }
+        
+        .result-label {
+            font-weight: bold;
+            color: #666;
+        }
+        
+        .result-value {
+            color: #333;
+        }
+        
+        .suggestions {
+            margin-top: 15px;
+        }
+        
+        .suggestion-item {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            margin: 5px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 تست موتور منطق شرطی V2</h1>
+            <p>تست Dependency Engine برای فیلترهای هوشمند</p>
+        </div>
+        
+        <div class="content">
+            <div class="progress">
+                <div class="progress-bar" id="progressBar"></div>
+            </div>
+            
+            <div id="alerts"></div>
+            
+            <!-- Step 1: Book Size -->
+            <div class="step active" id="step1">
+                <h2>مرحله 1: انتخاب قطع کتاب</h2>
+                <div class="form-group">
+                    <label for="bookSize">قطع کتاب:</label>
+                    <select id="bookSize">
+                        <option value="">در حال بارگذاری...</option>
+                    </select>
+                </div>
+                <button class="button" onclick="nextStep(1)" id="btn-step1" disabled>مرحله بعد</button>
+            </div>
+            
+            <!-- Step 2: Paper Type -->
+            <div class="step" id="step2">
+                <h2>مرحله 2: انتخاب نوع کاغذ</h2>
+                <div class="form-group">
+                    <label for="paperType">نوع کاغذ:</label>
+                    <select id="paperType">
+                        <option value="">ابتدا قطع را انتخاب کنید</option>
+                    </select>
+                </div>
+                <button class="button button-secondary" onclick="prevStep(2)">مرحله قبل</button>
+                <button class="button" onclick="nextStep(2)" id="btn-step2" disabled>مرحله بعد</button>
+            </div>
+            
+            <!-- Step 3: Paper Weight -->
+            <div class="step" id="step3">
+                <h2>مرحله 3: انتخاب گرماژ کاغذ</h2>
+                <div class="form-group">
+                    <label for="paperWeight">گرماژ کاغذ:</label>
+                    <select id="paperWeight">
+                        <option value="">ابتدا نوع کاغذ را انتخاب کنید</option>
+                    </select>
+                </div>
+                <button class="button button-secondary" onclick="prevStep(3)">مرحله قبل</button>
+                <button class="button" onclick="nextStep(3)" id="btn-step3" disabled>مرحله بعد</button>
+            </div>
+            
+            <!-- Step 4: Binding Type -->
+            <div class="step" id="step4">
+                <h2>مرحله 4: انتخاب نوع صحافی</h2>
+                <div class="form-group">
+                    <label for="bindingType">نوع صحافی:</label>
+                    <select id="bindingType">
+                        <option value="">در حال بارگذاری...</option>
+                    </select>
+                </div>
+                <button class="button button-secondary" onclick="prevStep(4)">مرحله قبل</button>
+                <button class="button" onclick="validateAndCalculate()" id="btn-step4" disabled>محاسبه قیمت</button>
+            </div>
+            
+            <!-- Result -->
+            <div class="step" id="result">
+                <h2>نتیجه</h2>
+                <div id="resultContent"></div>
+                <button class="button button-secondary" onclick="reset()">شروع مجدد</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const API_BASE = '/wp-json/tabesh/v1';
+        let formData = {};
+        let currentStepNum = 1;
+        let allowedOptions = {};
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            loadInitialData();
+        });
+
+        // Load book sizes
+        async function loadInitialData() {
+            try {
+                // For demo purposes, we'll use a hardcoded list
+                // In production, this would come from an API
+                const bookSizes = [
+                    { value: 'A5', label: 'A5' },
+                    { value: 'A4', label: 'A4' },
+                    { value: 'رقعی', label: 'رقعی' },
+                    { value: 'وزیری', label: 'وزیری' }
+                ];
+                
+                const select = document.getElementById('bookSize');
+                select.innerHTML = '<option value="">انتخاب کنید...</option>';
+                
+                bookSizes.forEach(size => {
+                    const option = document.createElement('option');
+                    option.value = size.value;
+                    option.textContent = size.label;
+                    select.appendChild(option);
+                });
+                
+                select.addEventListener('change', handleBookSizeChange);
+            } catch (error) {
+                showAlert('خطا در بارگذاری داده‌ها: ' + error.message, 'error');
+            }
+        }
+
+        // Handle book size change
+        async function handleBookSizeChange(e) {
+            const bookSize = e.target.value;
+            
+            if (!bookSize) {
+                document.getElementById('btn-step1').disabled = true;
+                return;
+            }
+            
+            formData.book_size = bookSize;
+            document.getElementById('btn-step1').disabled = false;
+            
+            // Simulate API call
+            showAlert('در حال بارگذاری گزینه‌های مجاز...', 'info');
+            
+            // In production, call the real API
+            // const options = await fetchAllowedOptions(bookSize, {});
+            // For demo, use mock data
+            setTimeout(() => {
+                loadMockOptions();
+                hideAlerts();
+            }, 500);
+        }
+
+        // Mock data for demonstration
+        function loadMockOptions() {
+            allowedOptions = {
+                papers: [
+                    { type: 'تحریر', weights: ['60', '70', '80'] },
+                    { type: 'بالک', weights: ['70', '80', '100'] },
+                    { type: 'گلاسه', weights: ['80', '100', '115'] }
+                ],
+                bindings: [
+                    { type: 'شومیز', cover_weights: ['200', '250', '300'] },
+                    { type: 'جلد سخت', cover_weights: ['250', '300', '350'] },
+                    { type: 'سیمی', cover_weights: ['200', '250'] }
+                ]
+            };
+        }
+
+        // Next step handler
+        function nextStep(step) {
+            if (step === 1) {
+                // Load paper types
+                loadPaperTypes();
+                showStep(2);
+            } else if (step === 2) {
+                // Load paper weights
+                loadPaperWeights();
+                showStep(3);
+            } else if (step === 3) {
+                // Load binding types
+                loadBindingTypes();
+                showStep(4);
+            }
+            
+            updateProgress();
+        }
+
+        // Previous step handler
+        function prevStep(step) {
+            showStep(step - 1);
+            updateProgress();
+        }
+
+        // Show specific step
+        function showStep(stepNum) {
+            document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+            
+            // Handle result as special case
+            if (stepNum === 'result' || stepNum > 4) {
+                document.getElementById('result').classList.add('active');
+                currentStepNum = 5;
+            } else {
+                document.getElementById(`step${stepNum}`).classList.add('active');
+                currentStepNum = stepNum;
+            }
+        }
+
+        // Update progress bar
+        function updateProgress() {
+            // Cap progress at 100% (4 steps max)
+            const progress = Math.min((currentStepNum / 4) * 100, 100);
+            document.getElementById('progressBar').style.width = progress + '%';
+        }
+
+        // Load paper types
+        function loadPaperTypes() {
+            const select = document.getElementById('paperType');
+            select.innerHTML = '<option value="">انتخاب کنید...</option>';
+            
+            allowedOptions.papers.forEach(paper => {
+                const option = document.createElement('option');
+                option.value = paper.type;
+                option.textContent = paper.type;
+                select.appendChild(option);
+            });
+            
+            select.addEventListener('change', (e) => {
+                formData.paper_type = e.target.value;
+                document.getElementById('btn-step2').disabled = !e.target.value;
+            });
+        }
+
+        // Load paper weights
+        function loadPaperWeights() {
+            const select = document.getElementById('paperWeight');
+            select.innerHTML = '<option value="">انتخاب کنید...</option>';
+            
+            const selectedPaper = allowedOptions.papers.find(p => p.type === formData.paper_type);
+            if (selectedPaper) {
+                selectedPaper.weights.forEach(weight => {
+                    const option = document.createElement('option');
+                    option.value = weight;
+                    option.textContent = weight + ' گرم';
+                    select.appendChild(option);
+                });
+            }
+            
+            select.addEventListener('change', (e) => {
+                formData.paper_weight = e.target.value;
+                document.getElementById('btn-step3').disabled = !e.target.value;
+            });
+        }
+
+        // Load binding types
+        function loadBindingTypes() {
+            const select = document.getElementById('bindingType');
+            select.innerHTML = '<option value="">انتخاب کنید...</option>';
+            
+            allowedOptions.bindings.forEach(binding => {
+                const option = document.createElement('option');
+                option.value = binding.type;
+                option.textContent = binding.type;
+                select.appendChild(option);
+            });
+            
+            select.addEventListener('change', (e) => {
+                formData.binding_type = e.target.value;
+                document.getElementById('btn-step4').disabled = !e.target.value;
+            });
+        }
+
+        // Validate and calculate
+        async function validateAndCalculate() {
+            showAlert('در حال اعتبارسنجی و محاسبه...', 'info');
+            
+            // Simulate API call
+            setTimeout(() => {
+                const result = {
+                    allowed: true,
+                    status: 'valid',
+                    message: 'ترکیب معتبر است',
+                    price: {
+                        total_price: 125000,
+                        price_per_book: 2500,
+                        quantity: 50,
+                        breakdown: {
+                            book_size: formData.book_size,
+                            paper_type: formData.paper_type,
+                            paper_weight: formData.paper_weight,
+                            binding_type: formData.binding_type
+                        }
+                    }
+                };
+                
+                displayResult(result);
+                showStep('result');
+                updateProgress();
+            }, 1000);
+        }
+
+        // Display result
+        function displayResult(result) {
+            const content = document.getElementById('resultContent');
+            
+            if (!result.allowed) {
+                content.innerHTML = `
+                    <div class="alert alert-error">
+                        <strong>خطا:</strong> ${result.message}
+                        ${result.suggestions && result.suggestions.length > 0 ? `
+                            <div class="suggestions">
+                                <p><strong>پیشنهادات:</strong></p>
+                                ${result.suggestions.map(s => `<span class="suggestion-item">${s}</span>`).join('')}
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+                return;
+            }
+            
+            content.innerHTML = `
+                <div class="alert alert-success">
+                    <strong>موفق:</strong> ${result.message}
+                </div>
+                
+                <div class="result-card">
+                    <h3>جزئیات محاسبه</h3>
+                    <div class="result-item">
+                        <span class="result-label">قطع کتاب:</span>
+                        <span class="result-value">${result.price.breakdown.book_size}</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">نوع کاغذ:</span>
+                        <span class="result-value">${result.price.breakdown.paper_type}</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">گرماژ:</span>
+                        <span class="result-value">${result.price.breakdown.paper_weight} گرم</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">نوع صحافی:</span>
+                        <span class="result-value">${result.price.breakdown.binding_type}</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">قیمت هر جلد:</span>
+                        <span class="result-value">${result.price.price_per_book.toLocaleString('fa-IR')} تومان</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">تعداد:</span>
+                        <span class="result-value">${result.price.quantity.toLocaleString('fa-IR')} عدد</span>
+                    </div>
+                    <div class="result-item" style="border-top: 2px solid #667eea; padding-top: 15px; margin-top: 10px;">
+                        <span class="result-label" style="font-size: 18px;">قیمت کل:</span>
+                        <span class="result-value" style="font-size: 20px; color: #667eea; font-weight: bold;">
+                            ${result.price.total_price.toLocaleString('fa-IR')} تومان
+                        </span>
+                    </div>
+                </div>
+            `;
+            
+            hideAlerts();
+        }
+
+        // Reset form
+        function reset() {
+            formData = {};
+            currentStepNum = 1;
+            showStep(1);
+            updateProgress();
+            document.getElementById('bookSize').selectedIndex = 0;
+            document.getElementById('btn-step1').disabled = true;
+            hideAlerts();
+        }
+
+        // Alert helpers
+        function showAlert(message, type = 'info') {
+            const alertsDiv = document.getElementById('alerts');
+            const alertClass = `alert alert-${type}`;
+            alertsDiv.innerHTML = `<div class="${alertClass}">${message}</div>`;
+        }
+
+        function hideAlerts() {
+            document.getElementById('alerts').innerHTML = '';
+        }
+
+        // API helpers (for production use)
+        async function fetchAllowedOptions(bookSize, currentSelection) {
+            const response = await fetch(`${API_BASE}/get-allowed-options`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    book_size: bookSize,
+                    current_selection: currentSelection
+                })
+            });
+            
+            const result = await response.json();
+            if (!result.success) {
+                throw new Error(result.message);
+            }
+            
+            return result.data;
+        }
+
+        async function validateCombination(formData) {
+            const response = await fetch(`${API_BASE}/validate-combination`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData)
+            });
+            
+            return await response.json();
+        }
+
+        async function calculatePrice(formData) {
+            const response = await fetch(`${API_BASE}/calculate-price`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    ...formData,
+                    page_count_bw: 100,
+                    page_count_color: 0,
+                    quantity: 50
+                })
+            });
+            
+            return await response.json();
+        }
+    </script>
+</body>
+</html>

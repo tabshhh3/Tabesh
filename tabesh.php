@@ -1214,6 +1214,41 @@ final class Tabesh {
 			)
 		);
 
+		// New endpoint for dynamic allowed options based on current selection
+		register_rest_route(
+			TABESH_REST_NAMESPACE,
+			'/get-allowed-options',
+			array(
+				'methods'             => 'POST',
+				'callback'            => array( $this, 'rest_get_allowed_options_dynamic' ),
+				'permission_callback' => '__return_true',
+				'args'                => array(
+					'book_size'         => array(
+						'required'          => true,
+						'validate_callback' => function ( $param ) {
+							return ! empty( $param );
+						},
+					),
+					'current_selection' => array(
+						'required' => false,
+						'type'     => 'object',
+						'default'  => array(),
+					),
+				),
+			)
+		);
+
+		// New endpoint to validate parameter combination
+		register_rest_route(
+			TABESH_REST_NAMESPACE,
+			'/validate-combination',
+			array(
+				'methods'             => 'POST',
+				'callback'            => array( $this, 'rest_validate_combination' ),
+				'permission_callback' => '__return_true',
+			)
+		);
+
 		register_rest_route(
 			TABESH_REST_NAMESPACE,
 			'/submit-order',
@@ -1841,8 +1876,19 @@ final class Tabesh {
 			);
 		}
 
-		// Get available options.
-		$options = $pricing_engine->get_available_options( $book_size );
+		// Use constraint manager for enhanced options.
+		if ( ! class_exists( 'Tabesh_Constraint_Manager' ) ) {
+			return new WP_REST_Response(
+				array(
+					'success' => false,
+					'message' => __( 'Constraint Manager موجود نیست', 'tabesh' ),
+				),
+				500
+			);
+		}
+
+		$constraint_manager = new Tabesh_Constraint_Manager();
+		$options            = $constraint_manager->get_allowed_options( array(), $book_size );
 
 		if ( isset( $options['error'] ) && $options['error'] ) {
 			return new WP_REST_Response(
@@ -1856,11 +1902,146 @@ final class Tabesh {
 
 		return new WP_REST_Response(
 			array(
-				'success'            => true,
-				'book_size'          => $options['book_size'],
-				'available_papers'   => $options['available_papers'],
-				'available_bindings' => $options['available_bindings'],
-				'has_restrictions'   => $options['has_restrictions'],
+				'success'               => true,
+				'book_size'             => $options['book_size'],
+				'allowed_papers'        => $options['allowed_papers'],
+				'allowed_bindings'      => $options['allowed_bindings'],
+				'allowed_print_types'   => $options['allowed_print_types'],
+				'allowed_cover_weights' => $options['allowed_cover_weights'],
+				'allowed_extras'        => $options['allowed_extras'],
+			),
+			200
+		);
+	}
+
+	/**
+	 * REST: Get allowed options dynamically based on current selection
+	 *
+	 * This is the key endpoint for step-by-step form UX.
+	 * Returns what options are valid for next steps based on current selections.
+	 *
+	 * @param WP_REST_Request $request Request object.
+	 * @return WP_REST_Response Response object.
+	 */
+	public function rest_get_allowed_options_dynamic( $request ) {
+		$params = $request->get_json_params();
+
+		$book_size         = sanitize_text_field( $params['book_size'] ?? '' );
+		$current_selection = $params['current_selection'] ?? array();
+
+		if ( empty( $book_size ) ) {
+			return new WP_REST_Response(
+				array(
+					'success' => false,
+					'message' => __( 'قطع کتاب الزامی است', 'tabesh' ),
+				),
+				400
+			);
+		}
+
+		// Check if V2 engine is enabled.
+		$pricing_engine = new Tabesh_Pricing_Engine();
+		if ( ! $pricing_engine->is_enabled() ) {
+			return new WP_REST_Response(
+				array(
+					'success' => false,
+					'message' => __( 'موتور قیمت‌گذاری جدید فعال نیست', 'tabesh' ),
+				),
+				400
+			);
+		}
+
+		// Use constraint manager.
+		if ( ! class_exists( 'Tabesh_Constraint_Manager' ) ) {
+			return new WP_REST_Response(
+				array(
+					'success' => false,
+					'message' => __( 'Constraint Manager موجود نیست', 'tabesh' ),
+				),
+				500
+			);
+		}
+
+		$constraint_manager = new Tabesh_Constraint_Manager();
+		$options            = $constraint_manager->get_allowed_options( $current_selection, $book_size );
+
+		if ( isset( $options['error'] ) && $options['error'] ) {
+			return new WP_REST_Response(
+				array(
+					'success' => false,
+					'message' => $options['message'],
+				),
+				400
+			);
+		}
+
+		// Cache result for performance.
+		$cache_key = 'tabesh_allowed_options_' . md5( wp_json_encode( $params ) );
+		wp_cache_set( $cache_key, $options, 'tabesh', 300 ); // 5 minutes cache.
+
+		return new WP_REST_Response(
+			array(
+				'success' => true,
+				'data'    => $options,
+			),
+			200
+		);
+	}
+
+	/**
+	 * REST: Validate parameter combination
+	 *
+	 * Validates a complete parameter combination and returns detailed feedback.
+	 *
+	 * @param WP_REST_Request $request Request object.
+	 * @return WP_REST_Response Response object.
+	 */
+	public function rest_validate_combination( $request ) {
+		$params = $request->get_json_params();
+
+		if ( ! is_array( $params ) || empty( $params ) ) {
+			return new WP_REST_Response(
+				array(
+					'success' => false,
+					'message' => __( 'داده‌های نامعتبر', 'tabesh' ),
+				),
+				400
+			);
+		}
+
+		// Check if V2 engine is enabled.
+		$pricing_engine = new Tabesh_Pricing_Engine();
+		if ( ! $pricing_engine->is_enabled() ) {
+			return new WP_REST_Response(
+				array(
+					'success' => false,
+					'message' => __( 'موتور قیمت‌گذاری جدید فعال نیست', 'tabesh' ),
+				),
+				400
+			);
+		}
+
+		// Use constraint manager for validation.
+		if ( ! class_exists( 'Tabesh_Constraint_Manager' ) ) {
+			return new WP_REST_Response(
+				array(
+					'success' => false,
+					'message' => __( 'Constraint Manager موجود نیست', 'tabesh' ),
+				),
+				500
+			);
+		}
+
+		$constraint_manager = new Tabesh_Constraint_Manager();
+		$validation         = $constraint_manager->validate_combination( $params );
+
+		return new WP_REST_Response(
+			array(
+				'success'     => true,
+				'allowed'     => $validation['allowed'],
+				'status'      => $validation['status'],
+				'message'     => $validation['message'],
+				'suggestions' => $validation['suggestions'] ?? array(),
 			),
 			200
 		);
@@ -2403,14 +2584,14 @@ final class Tabesh {
 			'tabesh-frontend',
 			'tabeshData',
 			array(
-				'ajaxUrl'              => admin_url( 'admin-ajax.php' ),
-				'restUrl'              => rest_url( TABESH_REST_NAMESPACE ),
-				'nonce'                => wp_create_nonce( 'wp_rest' ),
-				'ajaxNonce'            => wp_create_nonce( 'tabesh_nonce' ), // For AJAX backward compatibility (field name: 'security')
-				'logoutUrl'            => wp_logout_url( home_url() ),
-				'debug'                => WP_DEBUG, // Add debug flag for conditional console logging
+				'ajaxUrl'             => admin_url( 'admin-ajax.php' ),
+				'restUrl'             => rest_url( TABESH_REST_NAMESPACE ),
+				'nonce'               => wp_create_nonce( 'wp_rest' ),
+				'ajaxNonce'           => wp_create_nonce( 'tabesh_nonce' ), // For AJAX backward compatibility (field name: 'security')
+				'logoutUrl'           => wp_logout_url( home_url() ),
+				'debug'               => WP_DEBUG, // Add debug flag for conditional console logging
 				// Settings - all decoded as arrays/objects for frontend use
-				'settings'             => array(
+				'settings'            => array(
 					'paperTypes'        => $paper_types,
 					'bookSizes'         => $book_sizes,
 					'printTypes'        => $print_types,
@@ -2421,12 +2602,12 @@ final class Tabesh {
 					'extras'            => $extras,
 				),
 				// Backwards compatibility
-				'paperTypes'           => $paper_types,
+				'paperTypes'          => $paper_types,
 				// V2 Pricing Engine data
-				'v2Enabled'            => $v2_enabled,
-				'v2PricingMatrices'    => $v2_pricing_matrices, // Full matrices for dynamic form population
-				'quantityConstraints'  => $quantity_constraints,
-				'strings'              => array(
+				'v2Enabled'           => $v2_enabled,
+				'v2PricingMatrices'   => $v2_pricing_matrices, // Full matrices for dynamic form population
+				'quantityConstraints' => $quantity_constraints,
+				'strings'             => array(
 					'calculating' => __( 'در حال محاسبه...', 'tabesh' ),
 					'error'       => __( 'خطا در پردازش درخواست', 'tabesh' ),
 					'success'     => __( 'عملیات با موفقیت انجام شد', 'tabesh' ),

@@ -690,25 +690,61 @@ class Tabesh_Order {
 
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 				error_log( 'Tabesh REST: Calculation successful' );
-				error_log( 'Tabesh REST: Total price: ' . $result['total_price'] );
+				if ( isset( $result['total_price'] ) ) {
+					error_log( 'Tabesh REST: Total price: ' . $result['total_price'] );
+				}
 			}
 
-			return new WP_REST_Response(
-				array(
-					'success' => true,
-					'data'    => $result,
-				),
-				200
+			// Enhanced response structure for V2 with dependency engine support.
+			$response = array(
+				'success' => true,
+				'data'    => $result,
 			);
+
+			// If calculation was successful (no error), add allowed next options.
+			if ( ! isset( $result['error'] ) || ! $result['error'] ) {
+				// Check if V2 is active and constraint manager exists.
+				if ( Tabesh_Pricing_Engine::is_v2_active() &&
+					! empty( $params['book_size'] ) &&
+					class_exists( 'Tabesh_Constraint_Manager' ) ) {
+					$constraint_manager = new Tabesh_Constraint_Manager();
+
+					// Build current selection from params for next step filtering.
+					$current_selection = array(
+						'book_size'    => $params['book_size'] ?? '',
+						'paper_type'   => $params['paper_type'] ?? '',
+						'paper_weight' => $params['paper_weight'] ?? '',
+						'binding_type' => $params['binding_type'] ?? '',
+					);
+
+					$allowed_options = $constraint_manager->get_allowed_options(
+						$current_selection,
+						$params['book_size']
+					);
+
+					if ( ! isset( $allowed_options['error'] ) ) {
+						$response['allowed_next_options'] = $allowed_options;
+					}
+				}
+
+				$response['status']  = 'valid';
+				$response['message'] = __( 'محاسبه با موفقیت انجام شد', 'tabesh' );
+			} else {
+				// Calculation returned an error.
+				$response['status']  = 'invalid';
+				$response['message'] = $result['message'] ?? __( 'خطا در محاسبه', 'tabesh' );
+			}
+
+			return new WP_REST_Response( $response, 200 );
 		} catch ( Exception $e ) {
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-				// Only log detailed error info in debug mode
+				// Only log detailed error info in debug mode.
 				error_log( 'Tabesh REST ERROR: Exception in calculate_price' );
 				error_log( 'Tabesh REST ERROR: ' . $e->getMessage() );
 				error_log( 'Tabesh REST ERROR: File: ' . $e->getFile() . ' Line: ' . $e->getLine() );
 			}
 
-			// Return generic error message in production, detailed in debug mode
+			// Return generic error message in production, detailed in debug mode.
 			$error_message = ( defined( 'WP_DEBUG' ) && WP_DEBUG )
 				? $e->getMessage()
 				: __( 'خطا در محاسبه قیمت. لطفا دوباره تلاش کنید.', 'tabesh' );
@@ -716,6 +752,7 @@ class Tabesh_Order {
 			return new WP_REST_Response(
 				array(
 					'success' => false,
+					'status'  => 'error',
 					'message' => $error_message,
 				),
 				400
