@@ -77,6 +77,14 @@
 			}
 
 			formState.book_size = bookSize;
+			// Reset downstream selections
+			formState.paper_type = '';
+			formState.paper_weight = '';
+			formState.print_type = '';
+			formState.binding_type = '';
+			formState.cover_weight = '';
+			formState.extras = [];
+			
 			loadAllowedOptions({ book_size: bookSize });
 		});
 
@@ -91,6 +99,15 @@
 			}
 
 			formState.paper_type = paperType;
+			// Reset downstream selections
+			formState.paper_weight = '';
+			formState.print_type = '';
+			formState.binding_type = '';
+			formState.cover_weight = '';
+			formState.extras = [];
+			
+			// Refresh allowed options with paper_type in current_selection
+			refreshAllowedOptionsFromSelection();
 			loadPaperWeights(paperType);
 		});
 
@@ -105,6 +122,12 @@
 			}
 
 			formState.paper_weight = paperWeight;
+			// Reset downstream selections
+			formState.print_type = '';
+			formState.binding_type = '';
+			formState.cover_weight = '';
+			formState.extras = [];
+			
 			loadPrintTypes();
 		});
 
@@ -119,6 +142,11 @@
 			}
 
 			formState.print_type = printType;
+			// Reset downstream selections
+			formState.binding_type = '';
+			formState.cover_weight = '';
+			formState.extras = [];
+			
 			showStep(5); // Show page count
 		});
 
@@ -136,7 +164,7 @@
 			const quantity = parseInt($(this).val(), 10);
 			if (quantity > 0) {
 				formState.quantity = quantity;
-				loadBindingTypes();
+				showStep(7); // Show binding types
 			}
 		});
 
@@ -151,6 +179,10 @@
 			}
 
 			formState.binding_type = bindingType;
+			// Reset downstream selections
+			formState.cover_weight = '';
+			formState.extras = [];
+			
 			loadCoverWeights();
 			loadExtras();
 		});
@@ -229,6 +261,66 @@
 				console.error('AJAX error:', error);
 				hideLoading();
 				showError('خطا در ارتباط با سرور. لطفاً دوباره تلاش کنید.');
+			}
+		});
+	}
+
+	/**
+	 * Refresh allowed options based on current form state
+	 * This is called when a selection changes to update all downstream options
+	 */
+	function refreshAllowedOptionsFromSelection() {
+		if (!formState.book_size) {
+			return;
+		}
+
+		showLoading();
+
+		// Build current selection from form state
+		const currentSelection = {};
+		if (formState.paper_type) {
+			currentSelection.paper_type = formState.paper_type;
+		}
+		if (formState.paper_weight) {
+			currentSelection.paper_weight = formState.paper_weight;
+		}
+		if (formState.binding_type) {
+			currentSelection.binding_type = formState.binding_type;
+		}
+
+		console.log('Refreshing allowed options with selection:', currentSelection);
+
+		$.ajax({
+			url: tabeshOrderFormV2.apiUrl + '/get-allowed-options',
+			method: 'POST',
+			headers: {
+				'X-WP-Nonce': tabeshOrderFormV2.nonce
+			},
+			contentType: 'application/json',
+			data: JSON.stringify({
+				book_size: formState.book_size,
+				current_selection: currentSelection
+			}),
+			success: function(response) {
+				hideLoading();
+				console.log('Refreshed options response:', response);
+
+				if (response.success && response.data) {
+					// Update bindings list based on current paper selection
+					if (response.data.allowed_bindings) {
+						populateBindingTypes(response.data.allowed_bindings);
+					}
+					// Update print types if we have paper selected
+					if (response.data.allowed_print_types && formState.paper_type) {
+						populatePrintTypes(response.data.allowed_print_types);
+					}
+				} else {
+					console.error('Error refreshing options:', response.message);
+				}
+			},
+			error: function(xhr, status, error) {
+				console.error('AJAX error refreshing options:', error);
+				hideLoading();
 			}
 		});
 	}
@@ -352,6 +444,8 @@
 	 */
 	function populateBindingTypes(bindings) {
 		const $select = $('#binding_type_v2');
+		const currentValue = $select.val(); // Preserve current selection if valid
+		
 		$select.empty();
 		$select.append('<option value="">انتخاب کنید...</option>');
 
@@ -360,6 +454,7 @@
 			return;
 		}
 
+		let currentValueStillValid = false;
 		bindings.forEach(function(binding) {
 			$select.append(
 				$('<option></option>')
@@ -367,7 +462,23 @@
 					.text(binding.type)
 					.data('cover_weights', binding.cover_weights)
 			);
+			
+			if (binding.type === currentValue) {
+				currentValueStillValid = true;
+			}
 		});
+		
+		// Restore selection if still valid, otherwise clear it
+		if (currentValueStillValid) {
+			$select.val(currentValue);
+		} else if (currentValue) {
+			// Current selection is no longer valid - clear downstream fields
+			console.log('Binding type "' + currentValue + '" is no longer available, clearing selection');
+			formState.binding_type = '';
+			formState.cover_weight = '';
+			formState.extras = [];
+			hideStepsAfter(7);
+		}
 	}
 
 	/**

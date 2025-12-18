@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تست فیلترهای آبشاری - فرم V2</title>
+    <style>
+        body {
+            font-family: Tahoma, Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 3px solid #0073aa;
+            padding-bottom: 10px;
+        }
+        .test-section {
+            margin: 30px 0;
+            padding: 20px;
+            background: #f9f9f9;
+            border-right: 4px solid #0073aa;
+        }
+        .test-step {
+            margin: 15px 0;
+            padding: 15px;
+            background: white;
+            border-radius: 4px;
+        }
+        .test-step h3 {
+            margin-top: 0;
+            color: #0073aa;
+        }
+        .expected {
+            background: #e7f5e7;
+            padding: 10px;
+            margin: 10px 0;
+            border-right: 3px solid #46b450;
+        }
+        .actual {
+            background: #fff3cd;
+            padding: 10px;
+            margin: 10px 0;
+            border-right: 3px solid #ffb900;
+        }
+        .pass {
+            color: #46b450;
+            font-weight: bold;
+        }
+        .fail {
+            color: #dc3232;
+            font-weight: bold;
+        }
+        code {
+            background: #f0f0f0;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: Consolas, Monaco, monospace;
+        }
+        .note {
+            background: #d7eef4;
+            padding: 15px;
+            margin: 20px 0;
+            border-right: 4px solid #00a0d2;
+        }
+        .checklist {
+            list-style: none;
+            padding: 0;
+        }
+        .checklist li {
+            padding: 8px 0;
+            border-bottom: 1px solid #ddd;
+        }
+        .checklist li:before {
+            content: "☐ ";
+            color: #0073aa;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>راهنمای تست فیلترهای آبشاری - فرم سفارش V2</h1>
+
+        <div class="note">
+            <h2>⚠️ پیش‌نیازها</h2>
+            <ul class="checklist">
+                <li>وردپرس نصب و فعال باشد</li>
+                <li>افزونه Tabesh نصب و فعال باشد</li>
+                <li>Pricing Engine V2 فعال باشد (تنظیمات → قیمت‌گذاری محصول)</li>
+                <li>حداقل یک قطع کتاب با محدودیت‌ها پیکربندی شده باشد</li>
+                <li>فرم با shortcode <code>[tabesh_order_form_v2]</code> در یک صفحه نمایش داده شود</li>
+            </ul>
+        </div>
+
+        <div class="test-section">
+            <h2>تست 1️⃣: بارگذاری اولیه فرم</h2>
+            
+            <div class="test-step">
+                <h3>مرحله 1: باز کردن صفحه فرم</h3>
+                <p><strong>اقدام:</strong> صفحه‌ای که shortcode فرم را دارد باز کنید</p>
+                <div class="expected">
+                    <strong>انتظار:</strong>
+                    <ul>
+                        <li>فرم به درستی نمایش داده شود</li>
+                        <li>قطع‌های کتاب در dropdown موجود باشند</li>
+                        <li>فیلدهای بعدی مخفی باشند</li>
+                    </ul>
+                </div>
+                <div class="actual">
+                    <strong>نتیجه واقعی:</strong> (توسط تست‌کننده پر شود)
+                    <ul>
+                        <li>☐ قطع‌ها نمایش داده می‌شوند</li>
+                        <li>☐ فیلدهای بعدی مخفی هستند</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="test-step">
+                <h3>مرحله 2: انتخاب قطع کتاب</h3>
+                <p><strong>اقدام:</strong> یک قطع (مثلاً "A5") را انتخاب کنید</p>
+                <div class="expected">
+                    <strong>انتظار:</strong>
+                    <ul>
+                        <li>Loading indicator نمایش داده شود</li>
+                        <li>درخواست AJAX به <code>/wp-json/tabesh/v1/get-allowed-options</code> ارسال شود</li>
+                        <li>فیلد "نوع کاغذ" نمایش داده شود</li>
+                        <li>لیست کاغذهای مجاز بارگذاری شود</li>
+                        <li>Console log: <code>Book size selected: A5</code></li>
+                        <li>Console log: <code>Allowed options response: {success: true, ...}</code></li>
+                    </ul>
+                </div>
+                <div class="actual">
+                    <strong>نتیجه واقعی:</strong>
+                    <ul>
+                        <li>☐ Loading نمایش داده شد</li>
+                        <li>☐ AJAX request در Network tab دیده می‌شود</li>
+                        <li>☐ لیست کاغذها بارگذاری شد</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>تست 2️⃣: فیلتر آبشاری - تغییر نوع کاغذ</h2>
+            
+            <div class="test-step">
+                <h3>مرحله 1: انتخاب نوع کاغذ</h3>
+                <p><strong>اقدام:</strong> یک نوع کاغذ (مثلاً "گلاسه") را انتخاب کنید</p>
+                <div class="expected">
+                    <strong>انتظار:</strong>
+                    <ul>
+                        <li>درخواست AJAX جدید به <code>/get-allowed-options</code> ارسال شود</li>
+                        <li>این بار با پارامتر <code>current_selection: {paper_type: "گلاسه"}</code></li>
+                        <li>لیست صحافی‌ها بروزرسانی شود (فقط صحافی‌های مجاز برای گلاسه)</li>
+                        <li>Console log: <code>Paper type selected: گلاسه</code></li>
+                        <li>Console log: <code>Refreshing allowed options with selection: {paper_type: "گلاسه"}</code></li>
+                        <li>Console log: <code>Refreshed options response: ...</code></li>
+                    </ul>
+                </div>
+                <div class="actual">
+                    <strong>نتیجه واقعی:</strong>
+                    <ul>
+                        <li>☐ AJAX request با paper_type ارسال شد</li>
+                        <li>☐ لیست صحافی‌ها بروزرسانی شد</li>
+                        <li>☐ Console logs صحیح هستند</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="test-step">
+                <h3>مرحله 2: تغییر نوع کاغذ</h3>
+                <p><strong>اقدام:</strong> نوع کاغذ را به "تحریر" تغییر دهید</p>
+                <div class="expected">
+                    <strong>انتظار:</strong>
+                    <ul>
+                        <li>درخواست AJAX جدید با <code>paper_type: "تحریر"</code></li>
+                        <li>لیست صحافی‌ها دوباره بروزرسانی شود</li>
+                        <li>اگر صحافی انتخاب شده بود و هنوز معتبر است → حفظ شود</li>
+                        <li>اگر صحافی انتخاب شده دیگر معتبر نیست → پاک شود</li>
+                    </ul>
+                </div>
+                <div class="actual">
+                    <strong>نتیجه واقعی:</strong>
+                    <ul>
+                        <li>☐ AJAX با paper_type جدید ارسال شد</li>
+                        <li>☐ لیست صحافی‌ها به درستی بروزرسانی شد</li>
+                        <li>☐ انتخاب قبلی به درستی مدیریت شد</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>تست 3️⃣: Reset خودکار فیلدهای بعدی</h2>
+            
+            <div class="test-step">
+                <h3>سناریو کامل</h3>
+                <p><strong>اقدام:</strong></p>
+                <ol>
+                    <li>تمام فیلدها را پر کنید (از قطع تا نوع صحافی)</li>
+                    <li>قطع کتاب را تغییر دهید</li>
+                </ol>
+                <div class="expected">
+                    <strong>انتظار:</strong>
+                    <ul>
+                        <li>تمام فیلدهای بعد از قطع پاک شوند</li>
+                        <li>فقط فیلدهای قطع و عنوان کتاب باقی بمانند</li>
+                        <li>کاربر مجبور شود از ابتدا فرم را پر کند</li>
+                    </ul>
+                </div>
+                <div class="actual">
+                    <strong>نتیجه واقعی:</strong>
+                    <ul>
+                        <li>☐ فیلدها به درستی reset شدند</li>
+                        <li>☐ فرم به حالت اولیه برگشت</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>تست 4️⃣: جریان کامل سفارش</h2>
+            
+            <div class="test-step">
+                <h3>سناریو کامل</h3>
+                <p><strong>اقدام:</strong></p>
+                <ol>
+                    <li>عنوان کتاب: "تست"</li>
+                    <li>قطع: A5</li>
+                    <li>نوع کاغذ: تحریر</li>
+                    <li>گرماژ کاغذ: 70</li>
+                    <li>نوع چاپ: سیاه و سفید</li>
+                    <li>تعداد صفحات: 100</li>
+                    <li>تیراژ: 100</li>
+                    <li>نوع صحافی: شومیز</li>
+                    <li>گرماژ جلد: 200</li>
+                    <li>محاسبه قیمت</li>
+                    <li>ثبت سفارش</li>
+                </ol>
+                <div class="expected">
+                    <strong>انتظار:</strong>
+                    <ul>
+                        <li>قیمت به درستی محاسبه شود</li>
+                        <li>سفارش با موفقیت ثبت شود</li>
+                        <li>هیچ خطای "ترکیب نامعتبر" نمایش داده نشود</li>
+                        <li>پیام موفقیت نمایش داده شود</li>
+                        <li>کاربر به صفحه سفارشات هدایت شود</li>
+                    </ul>
+                </div>
+                <div class="actual">
+                    <strong>نتیجه واقعی:</strong>
+                    <ul>
+                        <li>☐ قیمت محاسبه شد</li>
+                        <li>☐ سفارش ثبت شد</li>
+                        <li>☐ خطایی رخ نداد</li>
+                        <li>☐ redirect انجام شد</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>تست 5️⃣: Network و Console Debugging</h2>
+            
+            <div class="test-step">
+                <h3>بررسی درخواست‌های AJAX</h3>
+                <p><strong>نحوه بررسی:</strong> Developer Tools → Network tab → فیلتر XHR</p>
+                <div class="expected">
+                    <strong>درخواست‌های مورد انتظار:</strong>
+                    <ul>
+                        <li>✅ <code>POST /wp-json/tabesh/v1/get-allowed-options</code> (انتخاب قطع)</li>
+                        <li>✅ <code>POST /wp-json/tabesh/v1/get-allowed-options</code> (انتخاب کاغذ)</li>
+                        <li>✅ <code>POST /wp-json/tabesh/v1/get-allowed-options</code> (انتخاب گرماژ)</li>
+                        <li>✅ <code>POST /wp-json/tabesh/v1/get-allowed-options</code> (انتخاب صحافی)</li>
+                        <li>✅ <code>POST /wp-json/tabesh/v1/calculate-price</code> (محاسبه قیمت)</li>
+                        <li>✅ <code>POST /wp-json/tabesh/v1/submit-order</code> (ثبت سفارش)</li>
+                    </ul>
+                    <p><strong>همه درخواست‌ها باید Status Code 200 یا 201 داشته باشند</strong></p>
+                </div>
+                <div class="actual">
+                    <strong>نتیجه واقعی:</strong> (تعداد و وضعیت درخواست‌ها را بنویسید)
+                </div>
+            </div>
+
+            <div class="test-step">
+                <h3>بررسی Console Logs</h3>
+                <p><strong>نحوه بررسی:</strong> Developer Tools → Console tab</p>
+                <div class="expected">
+                    <strong>پیام‌های مورد انتظار:</strong>
+                    <ul>
+                        <li><code>Initializing Tabesh Order Form V2...</code></li>
+                        <li><code>Book size selected: [قطع انتخابی]</code></li>
+                        <li><code>Paper type selected: [نوع کاغذ]</code></li>
+                        <li><code>Refreshing allowed options with selection: {...}</code></li>
+                        <li><code>Refreshed options response: {success: true, ...}</code></li>
+                        <li><strong>هیچ error قرمز رنگی نباید وجود داشته باشد</strong></li>
+                    </ul>
+                </div>
+                <div class="actual">
+                    <strong>نتیجه واقعی:</strong> (خطاها یا پیام‌های غیرعادی را بنویسید)
+                </div>
+            </div>
+        </div>
+
+        <div class="note">
+            <h2>✅ گزارش نهایی تست</h2>
+            <p><strong>تاریخ تست:</strong> _______________</p>
+            <p><strong>تست‌کننده:</strong> _______________</p>
+            <p><strong>نسخه افزونه:</strong> _______________</p>
+            <p><strong>نسخه WordPress:</strong> _______________</p>
+            <p><strong>مرورگر:</strong> _______________</p>
+            
+            <h3>خلاصه نتایج:</h3>
+            <ul class="checklist">
+                <li>تست 1: بارگذاری اولیه - <span class="pass">موفق</span> / <span class="fail">ناموفق</span></li>
+                <li>تست 2: فیلتر آبشاری - <span class="pass">موفق</span> / <span class="fail">ناموفق</span></li>
+                <li>تست 3: Reset خودکار - <span class="pass">موفق</span> / <span class="fail">ناموفق</span></li>
+                <li>تست 4: جریان کامل - <span class="pass">موفق</span> / <span class="fail">ناموفق</span></li>
+                <li>تست 5: Debugging - <span class="pass">موفق</span> / <span class="fail">ناموفق</span></li>
+            </ul>
+            
+            <h3>یادداشت‌های اضافی:</h3>
+            <p style="border: 1px solid #ddd; padding: 10px; min-height: 100px; background: white;">
+                <!-- تست‌کننده یادداشت‌های خود را اینجا بنویسد -->
+            </p>
+        </div>
+    </div>
+</body>
+</html>
