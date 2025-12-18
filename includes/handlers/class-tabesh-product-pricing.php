@@ -538,6 +538,9 @@ class Tabesh_Product_Pricing {
 	/**
 	 * Get pricing matrix for a specific book size
 	 *
+	 * CRITICAL FIX: Must use base64_encode() to match how save_pricing_matrix() stores keys.
+	 * DO NOT use sanitize_key() as it corrupts Persian text and causes key mismatch.
+	 *
 	 * @param string $book_size Book size identifier
 	 * @return array Pricing matrix
 	 */
@@ -545,8 +548,12 @@ class Tabesh_Product_Pricing {
 		global $wpdb;
 		$table_settings = $wpdb->prefix . 'tabesh_settings';
 
-		$setting_key = 'pricing_matrix_' . sanitize_key( $book_size );
+		// CRITICAL FIX: Use base64_encode to match save_pricing_matrix() method
+		// This preserves Persian characters and ensures key consistency
+		$safe_key    = base64_encode( $book_size );
+		$setting_key = 'pricing_matrix_' . $safe_key;
 
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$result = $wpdb->get_var(
 			$wpdb->prepare(
 				"SELECT setting_value FROM $table_settings WHERE setting_key = %s",
