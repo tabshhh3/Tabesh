@@ -61,11 +61,25 @@ A comprehensive WordPress plugin for managing book printing orders with full Woo
 
 ### Shortcodes
 
-#### Order Form
-Display the order submission form:
+#### Order Form (V1 - Legacy)
+Display the legacy order submission form:
 ```
 [tabesh_order_form]
 ```
+
+#### Order Form V2 (New - Recommended)
+Display the advanced order form with dynamic dependency mapping:
+```
+[tabesh_order_form_v2]
+```
+**Features:**
+- Dynamic option filtering based on pricing matrix V2
+- Cascading form that shows only allowed combinations
+- Real-time price calculation
+- Better performance with object caching
+- Requires V2 pricing engine to be enabled
+
+See [ORDER_FORM_V2_GUIDE.md](ORDER_FORM_V2_GUIDE.md) for complete documentation.
 
 #### User Orders
 Show logged-in user's orders:

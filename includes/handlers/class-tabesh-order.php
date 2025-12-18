@@ -1241,4 +1241,29 @@ class Tabesh_Order {
 		include TABESH_PLUGIN_DIR . 'templates/frontend/order-form.php';
 		return ob_get_clean();
 	}
+
+	/**
+	 * Render order form V2 shortcode with Dynamic Dependency Mapping
+	 *
+	 * This form uses the V2 pricing engine with matrix-based pricing and
+	 * dynamic option filtering based on admin-configured restrictions.
+	 *
+	 * @param array $atts Shortcode attributes.
+	 * @return string HTML output.
+	 */
+	public function render_order_form_v2( $atts ) {
+		// Check if V2 pricing engine is enabled.
+		$pricing_engine = new Tabesh_Pricing_Engine();
+		if ( ! $pricing_engine->is_enabled() ) {
+			return '<div class="tabesh-message error" dir="rtl"><p><strong>' .
+				esc_html__( 'خطا:', 'tabesh' ) .
+				'</strong> ' .
+				esc_html__( 'موتور قیمت‌گذاری نسخه ۲ فعال نیست. لطفاً ابتدا از پنل تنظیمات، موتور قیمت‌گذاری جدید را فعال کنید.', 'tabesh' ) .
+				'</p></div>';
+		}
+
+		ob_start();
+		include TABESH_PLUGIN_DIR . 'templates/frontend/order-form-v2.php';
+		return ob_get_clean();
+	}
 }
