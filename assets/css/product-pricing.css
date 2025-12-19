@@ -379,6 +379,18 @@
 	line-height: 1.6;
 }
 
+.tabesh-warning {
+	padding: 16px 20px;
+	margin-bottom: 24px;
+	background: #fff3cd;
+	border: 1px solid #ffeeba;
+	border-right: 4px solid #ffc107;
+	border-radius: 6px;
+	color: #856404;
+	font-size: 14px;
+	line-height: 1.6;
+}
+
 .tabesh-error {
 	padding: 16px 20px;
 	margin-bottom: 24px;
