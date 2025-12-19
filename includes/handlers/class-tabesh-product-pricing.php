@@ -68,9 +68,13 @@ class Tabesh_Product_Pricing {
 				if ( '1' === $enable_v2 ) {
 					$this->enable_pricing_engine_v2();
 					echo '<div class="tabesh-success">' . esc_html__( 'موتور قیمت‌گذاری جدید فعال شد', 'tabesh' ) . '</div>';
+					// Clear cache after enabling
+					Tabesh_Pricing_Engine::clear_cache();
 				} else {
 					$this->disable_pricing_engine_v2();
 					echo '<div class="tabesh-success">' . esc_html__( 'به موتور قدیمی بازگشت داده شد', 'tabesh' ) . '</div>';
+					// Clear cache after disabling
+					Tabesh_Pricing_Engine::clear_cache();
 				}
 			}
 		}
@@ -81,8 +85,13 @@ class Tabesh_Product_Pricing {
 			if ( wp_verify_nonce( $_POST['tabesh_pricing_nonce'], 'tabesh_save_pricing' ) ) {
 				// Now sanitize after verification
 				$this->handle_save_pricing();
+				// Clear cache after saving pricing
+				Tabesh_Pricing_Engine::clear_cache();
 			}
 		}
+
+		// Display health check report at the top
+		echo Tabesh_Pricing_Health_Checker::get_html_report();
 
 		// Get list of configured book sizes
 		$book_sizes = $this->get_all_book_sizes();
