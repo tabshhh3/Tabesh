@@ -164,6 +164,9 @@ class Tabesh_Install {
 		// Add details column to logs table (v1.5.0)
 		self::add_details_column_to_logs();
 
+		// Add action column to security_logs table (v1.5.1)
+		self::add_action_column_to_security_logs();
+
 		// Ensure all default settings are in database (v1.5.1)
 		self::ensure_default_settings();
 
@@ -432,6 +435,60 @@ class Tabesh_Install {
 
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 			error_log( 'Tabesh: SUCCESS - Added details column to logs table' );
+		}
+
+		return true;
+	}
+
+	/**
+	 * Add action column to security_logs table
+	 *
+	 * Creates the action column in wp_tabesh_security_logs for storing
+	 * the action type of security events. This column is referenced in code
+	 * but was missing from the initial table schema.
+	 * Part of the security logging improvement (v1.5.1).
+	 *
+	 * @return bool True on success, false on failure
+	 */
+	public static function add_action_column_to_security_logs() {
+		global $wpdb;
+		$table_security_logs = $wpdb->prefix . 'tabesh_security_logs';
+
+		// Check if table exists
+		if ( ! self::table_exists( $table_security_logs ) ) {
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				error_log( 'Tabesh: Security logs table does not exist, skipping action column migration' );
+			}
+			return false;
+		}
+
+		// Check if column already exists
+		if ( self::column_exists( $table_security_logs, 'action' ) ) {
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				error_log( 'Tabesh: action column already exists in security_logs table' );
+			}
+			return true;
+		}
+
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			error_log( 'Tabesh: Adding action column to security_logs table' );
+		}
+
+		// Note: ALTER TABLE cannot use wpdb::prepare as it doesn't support DDL statements
+		// The table name comes from $wpdb->prefix which is safe and not user input
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$result = $wpdb->query(
+			"ALTER TABLE `{$table_security_logs}` 
+            ADD COLUMN `action` VARCHAR(255) DEFAULT NULL AFTER `event_type`"
+		);
+
+		if ( $result === false ) {
+			error_log( 'Tabesh: ERROR - Failed to add action column to security_logs table: ' . $wpdb->last_error );
+			return false;
+		}
+
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			error_log( 'Tabesh: SUCCESS - Added action column to security_logs table' );
 		}
 
 		return true;
