@@ -1529,13 +1529,27 @@ class Tabesh_Pricing_Engine {
 		if ( $valid_sizes_result ) {
 			$decoded = json_decode( $valid_sizes_result, true );
 			if ( JSON_ERROR_NONE === json_last_error() && is_array( $decoded ) ) {
-				$valid_sizes = $decoded;
+				// CRITICAL FIX: Normalize valid_sizes from product parameters
+				// This ensures comparison works even if product params have descriptions
+				foreach ( $decoded as $size ) {
+					$valid_sizes[] = $this->normalize_book_size_key( $size );
+				}
 			}
 		}
 
 		if ( empty( $valid_sizes ) ) {
 			$stats['errors'][] = __( 'هیچ قطع کتابی در تنظیمات محصول تعریف نشده', 'tabesh' );
 			return $stats;
+		}
+
+		// Debug logging
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			error_log(
+				sprintf(
+					'Tabesh Migration: Valid sizes (normalized): %s',
+					implode( ', ', $valid_sizes )
+				)
+			);
 		}
 
 		// Get all pricing matrices with their data
