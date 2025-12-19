@@ -597,7 +597,7 @@ class Tabesh_Constraint_Manager {
 		// CRITICAL FIX: Do NOT return defaults!
 		// Returning defaults when product parameters are empty causes the "unknown book size" problem.
 		// Admin must explicitly configure book sizes in product settings.
-		// This ensures single source of truth and prevents orphaned pricing matrices..
+		// This ensures single source of truth and prevents orphaned pricing matrices.
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 			if ( empty( $book_sizes ) ) {
 				error_log( 'Tabesh: WARNING - No book sizes configured in product parameters! Admin must configure book sizes in settings.' );

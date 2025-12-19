@@ -181,10 +181,24 @@ if ( $found_valid ) {
 
 // Check that sizes without pricing are marked as disabled
 $sizes_without_pricing = array_diff( $test_book_sizes, array( $valid_size ) );
-foreach ( $available_sizes as $size_info ) {
-	if ( in_array( $size_info['size'], $sizes_without_pricing, true ) && $size_info['enabled'] === false ) {
-		echo '<div class="test-pass">✓ PASS: Size "' . $size_info['size'] . '" correctly marked as disabled (no pricing)</div>';
+$all_disabled_found     = true;
+foreach ( $sizes_without_pricing as $expected_disabled ) {
+	$found_disabled = false;
+	foreach ( $available_sizes as $size_info ) {
+		if ( $size_info['size'] === $expected_disabled && $size_info['enabled'] === false ) {
+			$found_disabled = true;
+			echo '<div class="test-pass">✓ PASS: Size "' . $size_info['size'] . '" correctly marked as disabled (no pricing)</div>';
+			break;
+		}
 	}
+	if ( ! $found_disabled ) {
+		echo '<div class="test-fail">✗ FAIL: Size "' . $expected_disabled . '" not found or not properly disabled</div>';
+		$all_disabled_found = false;
+	}
+}
+
+if ( $all_disabled_found && ! empty( $sizes_without_pricing ) ) {
+	echo '<div class="test-pass">✓ PASS: All sizes without pricing properly disabled (' . count( $sizes_without_pricing ) . ' sizes)</div>';
 }
 
 // Test 5: Orphaned matrix cleanup
