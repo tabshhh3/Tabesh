@@ -1056,106 +1056,32 @@ class Tabesh_Product_Pricing {
 	/**
 	 * Cleanup orphaned pricing matrices that don't have corresponding book size in product parameters
 	 *
-	 * This method ensures data integrity by removing pricing matrices for book sizes
-	 * that are not defined in the product parameters (book_sizes setting).
-	 * This prevents the broken cycle where orphaned matrices exist but can't be used.
+	 * CRITICAL FIX: This method is DISABLED to prevent deleting valid matrices.
+	 * The original implementation was too aggressive and would delete matrices when:
+	 * 1. book_sizes setting is empty (during initial configuration)
+	 * 2. book_sizes setting is being reconfigured
+	 * 3. Matrices exist for sizes that admin is about to add
 	 *
-	 * @return int Number of orphaned matrices removed
+	 * Instead, orphaned matrix cleanup is now handled by the migrate_mismatched_book_size_keys()
+	 * method which is more careful and only removes truly orphaned entries.
+	 *
+	 * @return int Number of orphaned matrices removed (always 0 in current implementation)
 	 */
 	private function cleanup_orphaned_pricing_matrices() {
-		global $wpdb;
-		$table_settings = $wpdb->prefix . 'tabesh_settings';
+		// CRITICAL FIX: Disable aggressive cleanup that was deleting valid matrices.
+		// The original logic compared matrices against book_sizes setting, but this
+		// caused data loss when:
+		// - Admin is configuring book sizes for the first time
+		// - Admin is temporarily removing/re-adding book sizes
+		// - Matrices exist from previous configurations
+		//
+		// Instead, rely on migrate_mismatched_book_size_keys() which is more intelligent
+		// and only removes truly invalid entries (bad encoding, etc.)
 
-		// Get valid book sizes from product parameters (source of truth)
-		$valid_sizes = $this->get_valid_book_sizes_from_settings();
-
-		if ( empty( $valid_sizes ) ) {
-			// No valid sizes defined, cannot safely cleanup
-			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-				error_log( 'Tabesh: Cleanup skipped - no valid book sizes in product parameters' );
-			}
-			return 0;
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			error_log( 'Tabesh: cleanup_orphaned_pricing_matrices disabled - using migrate_mismatched_book_size_keys instead' );
 		}
 
-		// Get all pricing matrix entries
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-		$all_matrices = $wpdb->get_results(
-			$wpdb->prepare(
-				"SELECT setting_key FROM {$table_settings} WHERE setting_key LIKE %s",
-				'pricing_matrix_%'
-			),
-			ARRAY_A
-		);
-
-		if ( empty( $all_matrices ) ) {
-			// No pricing matrices exist
-			return 0;
-		}
-
-		// Collect orphaned keys for bulk delete
-		$orphaned_keys = array();
-
-		foreach ( $all_matrices as $row ) {
-			$setting_key = $row['setting_key'];
-			$safe_key    = str_replace( 'pricing_matrix_', '', $setting_key );
-
-			// Decode book size using base64
-			$decoded = base64_decode( $safe_key, true );
-
-			// Validate decoded result
-			if ( false !== $decoded && ! empty( $decoded ) ) {
-				$book_size = $decoded;
-			} else {
-				// Legacy format - not base64 encoded
-				$book_size = $safe_key;
-			}
-
-			// Check if this book size is valid (exists in product parameters)
-			if ( ! in_array( $book_size, $valid_sizes, true ) ) {
-				// This is an orphaned entry - mark for deletion
-				$orphaned_keys[] = $setting_key;
-
-				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-					error_log(
-						sprintf(
-							'Tabesh: Found orphaned pricing matrix - Key: "%s", Invalid book_size: "%s"',
-							$setting_key,
-							$book_size
-						)
-					);
-				}
-			}
-		}
-
-		// Perform bulk delete if orphaned entries found
-		$removed_count = 0;
-		if ( ! empty( $orphaned_keys ) ) {
-			$placeholders = implode( ', ', array_fill( 0, count( $orphaned_keys ), '%s' ) );
-
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-			$deleted = $wpdb->query(
-				$wpdb->prepare(
-					"DELETE FROM {$table_settings} WHERE setting_key IN ($placeholders)",
-					...$orphaned_keys
-				)
-			);
-
-			if ( false !== $deleted ) {
-				$removed_count = $deleted;
-				Tabesh_Pricing_Engine::clear_cache();
-
-				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-					error_log(
-						sprintf(
-							'Tabesh: Cleanup complete - Removed %d orphaned pricing %s',
-							$removed_count,
-							$removed_count === 1 ? 'matrix' : 'matrices'
-						)
-					);
-				}
-			}
-		}
-
-		return $removed_count;
+		return 0;
 	}
 }

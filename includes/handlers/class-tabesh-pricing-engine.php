@@ -1304,8 +1304,10 @@ class Tabesh_Pricing_Engine {
 	/**
 	 * Clean up corrupted pricing matrices
 	 *
-	 * Removes any pricing matrix entries that don't correspond to valid book sizes
-	 * from the product parameters. Uses bulk delete for efficiency.
+	 * CRITICAL FIX: This method now only removes matrices with invalid key encoding,
+	 * NOT matrices that don't match product parameters. The product parameters comparison
+	 * was causing valid matrices to be deleted when book_sizes setting was empty or
+	 * being configured for the first time.
 	 *
 	 * This is a private method called internally by save_pricing_matrix().
 	 *
@@ -1315,31 +1317,6 @@ class Tabesh_Pricing_Engine {
 	private function cleanup_corrupted_matrices() {
 		global $wpdb;
 		$table_settings = $wpdb->prefix . 'tabesh_settings';
-
-		// Get valid book sizes from product parameters (source of truth).
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-		$valid_sizes_result = $wpdb->get_var(
-			$wpdb->prepare(
-				"SELECT setting_value FROM {$table_settings} WHERE setting_key = %s",
-				'book_sizes'
-			)
-		);
-
-		$valid_sizes = array();
-		if ( $valid_sizes_result ) {
-			$decoded = json_decode( $valid_sizes_result, true );
-			if ( JSON_ERROR_NONE === json_last_error() && is_array( $decoded ) ) {
-				$valid_sizes = $decoded;
-			}
-		}
-
-		if ( empty( $valid_sizes ) ) {
-			// No valid sizes configured, cannot clean up.
-			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-				error_log( 'Tabesh: cleanup_corrupted_matrices skipped - no valid book sizes configured' );
-			}
-			return 0;
-		}
 
 		// Get all pricing matrix entries.
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
@@ -1351,27 +1328,47 @@ class Tabesh_Pricing_Engine {
 			ARRAY_A
 		);
 
-		// Collect corrupted keys for bulk delete.
+		if ( empty( $all_matrices ) ) {
+			// No matrices to check.
+			return 0;
+		}
+
+		// Collect corrupted keys (invalid encoding only) for bulk delete.
 		$corrupted_keys = array();
 
 		foreach ( $all_matrices as $row ) {
 			$setting_key = $row['setting_key'];
 			$safe_key    = str_replace( 'pricing_matrix_', '', $setting_key );
 
-			// Decode book size using helper method.
-			$book_size = $this->decode_book_size_key( $safe_key );
+			// Try to decode book size.
+			$decoded = base64_decode( $safe_key, true );
 
-			// Check if this book size is valid.
-			if ( ! in_array( $book_size, $valid_sizes, true ) ) {
-				// This is a corrupted entry - mark for deletion.
+			// CRITICAL FIX: Only mark as corrupted if decoding fails completely.
+			// Do NOT compare against product parameters here as that causes valid
+			// matrices to be deleted when book_sizes is empty or being reconfigured.
+			// Note: Check for empty string specifically, not empty() which treats '0' as empty.
+			if ( false === $decoded || '' === $decoded ) {
+				// Invalid base64 encoding - this is truly corrupted.
 				$corrupted_keys[] = $setting_key;
 
 				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 					error_log(
 						sprintf(
-							'Tabesh: Found corrupted pricing matrix - Key: "%s", Invalid book_size: "%s"',
+							'Tabesh: Found corrupted pricing matrix with invalid encoding - Key: "%s"',
+							$setting_key
+						)
+					);
+				}
+			} elseif ( ! $this->is_valid_book_size_string( $decoded ) ) {
+				// Decoded successfully but result is not a valid book size string.
+				$corrupted_keys[] = $setting_key;
+
+				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+					error_log(
+						sprintf(
+							'Tabesh: Found corrupted pricing matrix with invalid book_size format - Key: "%s", Decoded: "%s"',
 							$setting_key,
-							$book_size
+							$decoded
 						)
 					);
 				}
@@ -1398,13 +1395,15 @@ class Tabesh_Pricing_Engine {
 				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 					error_log(
 						sprintf(
-							'Tabesh: Cleanup complete - Removed %d corrupted pricing %s using bulk delete',
+							'Tabesh: Cleanup complete - Removed %d corrupted pricing %s with invalid encoding',
 							$removed_count,
 							$removed_count === 1 ? 'matrix' : 'matrices'
 						)
 					);
 				}
 			}
+		} elseif ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			error_log( 'Tabesh: Cleanup complete - No corrupted matrices found' );
 		}
 
 		return $removed_count;
