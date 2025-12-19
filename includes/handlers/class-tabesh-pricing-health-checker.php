@@ -628,9 +628,10 @@ class Tabesh_Pricing_Health_Checker {
 			$setting_key = $row['setting_key'];
 			$safe_key    = str_replace( 'pricing_matrix_', '', $setting_key );
 
-			// Decode book size
+			// Decode book size with strict validation
 			$decoded = base64_decode( $safe_key, true );
-			if ( false === $decoded || empty( $decoded ) ) {
+			// Use strict comparison: false for decode failure, empty string check for invalid result
+			if ( false === $decoded || '' === $decoded ) {
 				continue;
 			}
 

@@ -129,11 +129,28 @@ class Tabesh_Pricing_Engine {
 	 */
 	public function normalize_book_size_key( $book_size ) {
 		// Remove anything in parentheses including the parentheses
-		// Pattern: \s*\([^)]*\) matches space + opening paren + any content + closing paren
+		// Pattern: \s*\([^)]*\) matches space + opening paren + non-closing-paren content + closing paren
+		// Note: This handles simple parentheses. Nested parentheses are not expected in book size names.
+		// If nested parentheses are found, only the outermost will be removed in one pass.
 		$normalized = preg_replace( '/\s*\([^)]*\)/', '', $book_size );
 
 		// Trim any leading/trailing whitespace
 		$normalized = trim( $normalized );
+
+		// Validate result is not empty
+		if ( empty( $normalized ) ) {
+			// If normalization results in empty string, return original
+			// This prevents data loss from malformed input like "(description only)"
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				error_log(
+					sprintf(
+						'Tabesh WARNING: Normalization resulted in empty string for "%s", returning original',
+						$book_size
+					)
+				);
+			}
+			return $book_size;
+		}
 
 		// Log transformation if different
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG && $normalized !== $book_size ) {
@@ -1552,23 +1569,27 @@ class Tabesh_Pricing_Engine {
 						$matrix_data = json_decode( $matrix_info['data'], true );
 
 						if ( is_array( $matrix_data ) && is_array( $merged_data ) ) {
-							// Merge page_costs
+							// Merge page_costs - preserve all unique combinations
+							// array_merge will overwrite duplicate keys, which is acceptable here
+							// as we want the most recent pricing data for each paper/weight/print combination
 							if ( isset( $matrix_data['page_costs'] ) && is_array( $matrix_data['page_costs'] ) ) {
 								if ( ! isset( $merged_data['page_costs'] ) ) {
 									$merged_data['page_costs'] = array();
 								}
-								$merged_data['page_costs'] = array_merge( $merged_data['page_costs'], $matrix_data['page_costs'] );
+								// Use array_replace_recursive to preserve nested structure and prefer newer data
+								$merged_data['page_costs'] = array_replace_recursive( $merged_data['page_costs'], $matrix_data['page_costs'] );
 							}
 
-							// Merge binding_costs
+							// Merge binding_costs - preserve all unique combinations
 							if ( isset( $matrix_data['binding_costs'] ) && is_array( $matrix_data['binding_costs'] ) ) {
 								if ( ! isset( $merged_data['binding_costs'] ) ) {
 									$merged_data['binding_costs'] = array();
 								}
-								$merged_data['binding_costs'] = array_merge( $merged_data['binding_costs'], $matrix_data['binding_costs'] );
+								// Use array_replace_recursive to preserve nested structure and prefer newer data
+								$merged_data['binding_costs'] = array_replace_recursive( $merged_data['binding_costs'], $matrix_data['binding_costs'] );
 							}
 
-							// Merge extras_costs
+							// Merge extras_costs - preserve all unique extras
 							if ( isset( $matrix_data['extras_costs'] ) && is_array( $matrix_data['extras_costs'] ) ) {
 								if ( ! isset( $merged_data['extras_costs'] ) ) {
 									$merged_data['extras_costs'] = array();
