@@ -88,8 +88,9 @@ class Tabesh_Constraint_Manager {
 			'allowed_extras'        => array(),
 		);
 
-		// Get selected paper type and binding type from current selection.
+		// Get selected values from current selection.
 		$selected_paper_type   = $current_selection['paper_type'] ?? null;
+		$selected_paper_weight = $current_selection['paper_weight'] ?? null;
 		$selected_binding_type = $current_selection['binding_type'] ?? null;
 
 		// Determine allowed papers.
@@ -99,17 +100,37 @@ class Tabesh_Constraint_Manager {
 				// Get allowed weights for this paper type.
 				$allowed_weights = array();
 				foreach ( $weights as $weight => $print_types ) {
-					$allowed_weights[] = array(
-						'weight' => $weight,
-						'slug'   => $this->slugify( $paper_type . '-' . $weight ),
-					);
+					// Check if this weight has at least one valid (non-zero) print type.
+					// A weight with all zero prices should be treated as disabled/unavailable.
+					$available_print_types = array();
+					if ( is_array( $print_types ) ) {
+						foreach ( $print_types as $print_type => $price ) {
+							// Only include print types with non-zero prices.
+							if ( is_numeric( $price ) && floatval( $price ) > 0 ) {
+								$available_print_types[] = $print_type;
+							}
+						}
+					}
+
+					// Only add this weight if it has at least one available print type.
+					// This prevents disabled weights (price=0) from appearing in the form.
+					if ( ! empty( $available_print_types ) ) {
+						$allowed_weights[] = array(
+							'weight'           => $weight,
+							'slug'             => $this->slugify( $paper_type . '-' . $weight ),
+							'available_prints' => $available_print_types,
+						);
+					}
 				}
 
-				$result['allowed_papers'][] = array(
-					'type'    => $paper_type,
-					'slug'    => $this->slugify( $paper_type ),
-					'weights' => $allowed_weights,
-				);
+				// Only add paper type if it has at least one valid weight.
+				if ( ! empty( $allowed_weights ) ) {
+					$result['allowed_papers'][] = array(
+						'type'    => $paper_type,
+						'slug'    => $this->slugify( $paper_type ),
+						'weights' => $allowed_weights,
+					);
+				}
 			}
 		}
 
@@ -136,18 +157,44 @@ class Tabesh_Constraint_Manager {
 			}
 		}
 
-		// Determine allowed print types for selected paper.
+		// Determine available print types based on selected paper type and weight pricing.
+		// Only print types with non-zero prices are included in the result.
 		if ( $selected_paper_type && isset( $page_costs[ $selected_paper_type ] ) ) {
 			$forbidden_prints = $restrictions['forbidden_print_types'][ $selected_paper_type ] ?? array();
 
-			$all_print_types = array( 'bw', 'color' );
-			foreach ( $all_print_types as $print_type ) {
-				if ( ! in_array( $print_type, $forbidden_prints, true ) ) {
-					$result['allowed_print_types'][] = array(
-						'type'  => $print_type,
-						'slug'  => $print_type,
-						'label' => 'bw' === $print_type ? __( 'سیاه و سفید', 'tabesh' ) : __( 'رنگی', 'tabesh' ),
-					);
+			// If a specific weight is selected, check which print types are available for that weight.
+			if ( $selected_paper_weight && isset( $page_costs[ $selected_paper_type ][ $selected_paper_weight ] ) ) {
+				$weight_print_types = $page_costs[ $selected_paper_type ][ $selected_paper_weight ];
+
+				// Only include print types that:
+				// 1. Are not forbidden by restrictions.
+				// 2. Have non-zero prices for this specific weight.
+				$all_print_types = array( 'bw', 'color' );
+				foreach ( $all_print_types as $print_type ) {
+					if ( ! in_array( $print_type, $forbidden_prints, true ) ) {
+						// Check if this print type exists for this weight and has a non-zero price.
+						$price = $weight_print_types[ $print_type ] ?? 0;
+						if ( is_numeric( $price ) && floatval( $price ) > 0 ) {
+							$result['allowed_print_types'][] = array(
+								'type'  => $print_type,
+								'slug'  => $print_type,
+								'label' => 'bw' === $print_type ? __( 'سیاه و سفید', 'tabesh' ) : __( 'رنگی', 'tabesh' ),
+							);
+						}
+					}
+				}
+			} else {
+				// If no weight is selected yet, return all print types not forbidden.
+				// (User will select weight first, then we'll filter based on that weight).
+				$all_print_types = array( 'bw', 'color' );
+				foreach ( $all_print_types as $print_type ) {
+					if ( ! in_array( $print_type, $forbidden_prints, true ) ) {
+						$result['allowed_print_types'][] = array(
+							'type'  => $print_type,
+							'slug'  => $print_type,
+							'label' => 'bw' === $print_type ? __( 'سیاه و سفید', 'tabesh' ) : __( 'رنگی', 'tabesh' ),
+						);
+					}
 				}
 			}
 		}
@@ -464,13 +511,13 @@ class Tabesh_Constraint_Manager {
 	 * @return array Array of available book sizes with metadata
 	 */
 	public function get_available_book_sizes() {
-		// Get ALL book sizes from product parameters (source of truth)
+		// Get ALL book sizes from product parameters (source of truth).
 		$all_book_sizes = $this->get_book_sizes_from_product_parameters();
 
-		// Get book sizes that have pricing configured (already normalized in that method)
+		// Get book sizes that have pricing configured (already normalized in that method).
 		$configured_sizes = $this->pricing_engine->get_configured_book_sizes();
 
-		// Log for debugging
+		// Log for debugging.
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 			error_log(
 				sprintf(
@@ -483,15 +530,15 @@ class Tabesh_Constraint_Manager {
 
 		$result = array();
 		foreach ( $all_book_sizes as $size ) {
-			// CRITICAL FIX: Normalize BOTH sides before comparison
-			// Product parameters might have "رقعی (14×20)" while configured_sizes has "رقعی"
+			// CRITICAL FIX: Normalize BOTH sides before comparison.
+			// Product parameters might have "رقعی (14×20)" while configured_sizes has "رقعی".
 			$normalized_size = $this->pricing_engine->normalize_book_size_key( $size );
 
-			// Check if this size has pricing configured (compare normalized versions)
+			// Check if this size has pricing configured (compare normalized versions).
 			$has_pricing = in_array( $normalized_size, $configured_sizes, true );
 
 			if ( $has_pricing ) {
-				// Get allowed options for sizes with pricing (pass original size, it will be normalized internally)
+				// Get allowed options for sizes with pricing (pass original size, it will be normalized internally).
 				$allowed_options = $this->get_allowed_options( array(), $size );
 
 				if ( ! isset( $allowed_options['error'] ) ) {
@@ -569,7 +616,7 @@ class Tabesh_Constraint_Manager {
 			}
 		}
 
-		// Final log
+		// Final log.
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 			$enabled_count = count(
 				array_filter(

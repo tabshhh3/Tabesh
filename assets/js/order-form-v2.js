@@ -345,21 +345,112 @@
 			return;
 		}
 
+		// Store available print types data with each weight option for frontend filtering.
+		// This data comes from the backend filtering logic that checks for non-zero prices.
 		weights.forEach(function(weightInfo) {
-			$weightSelect.append(
-				$('<option></option>')
-					.val(weightInfo.weight)
-					.text(weightInfo.weight + ' گرم')
-			);
+			const $option = $('<option></option>')
+				.val(weightInfo.weight)
+				.text(weightInfo.weight + ' گرم')
+				.data('available_prints', weightInfo.available_prints || []);
+			$weightSelect.append($option);
 		});
 	}
 
 	/**
-	 * Load print types
+	 * Load and filter print types based on selected paper weight availability
 	 */
 	function loadPrintTypes() {
-		// Print types are static (bw and color)
-		// Already rendered in template
+		// First, try to use locally cached data from weight selection
+		const $weightSelect = $('#paper_weight_wizard');
+		const selectedOption = $weightSelect.find('option:selected');
+		const availablePrints = selectedOption.data('available_prints') || [];
+
+		// Get all print type radio buttons
+		const $bwOption = $('input[name="print_type"][value="bw"]');
+		const $colorOption = $('input[name="print_type"][value="color"]');
+		const $bwCard = $bwOption.closest('.print-option');
+		const $colorCard = $colorOption.closest('.print-option');
+
+		// Reset both options first
+		$bwOption.prop('disabled', false);
+		$colorOption.prop('disabled', false);
+		$bwCard.removeClass('disabled');
+		$colorCard.removeClass('disabled');
+
+		// If we have specific availability data from the weight option, apply it
+		if (availablePrints.length > 0) {
+			// Disable options that are not available (price = 0)
+			if (!availablePrints.includes('bw')) {
+				$bwOption.prop('disabled', true).prop('checked', false);
+				$bwCard.addClass('disabled');
+			}
+			if (!availablePrints.includes('color')) {
+				$colorOption.prop('disabled', true).prop('checked', false);
+				$colorCard.addClass('disabled');
+			}
+
+			// Auto-select if only one option is available
+			if (availablePrints.length === 1) {
+				const onlyAvailable = availablePrints[0];
+				if (onlyAvailable === 'bw') {
+					$bwOption.prop('checked', true);
+					formState.print_type = 'bw';
+				} else if (onlyAvailable === 'color') {
+					$colorOption.prop('checked', true);
+					formState.print_type = 'color';
+				}
+			}
+		} else if (formState.paper_type && formState.paper_weight) {
+			// Fallback: Query the API to get allowed print types
+			// This ensures we always have the correct data even if cached data is missing
+			$.ajax({
+				url: tabeshOrderFormV2.apiUrl + '/get-allowed-options',
+				method: 'POST',
+				headers: {
+					'X-WP-Nonce': tabeshOrderFormV2.nonce
+				},
+				contentType: 'application/json',
+				data: JSON.stringify({
+					book_size: formState.book_size,
+					current_selection: {
+						paper_type: formState.paper_type,
+						paper_weight: formState.paper_weight
+					}
+				}),
+				success: function(response) {
+					if (response.success && response.data && response.data.allowed_print_types) {
+						const allowedTypes = response.data.allowed_print_types.map(function(pt) {
+							return pt.type;
+						});
+						
+						// Apply the restrictions
+						if (!allowedTypes.includes('bw')) {
+							$bwOption.prop('disabled', true).prop('checked', false);
+							$bwCard.addClass('disabled');
+						}
+						if (!allowedTypes.includes('color')) {
+							$colorOption.prop('disabled', true).prop('checked', false);
+							$colorCard.addClass('disabled');
+						}
+
+						// Auto-select if only one option
+						if (allowedTypes.length === 1) {
+							if (allowedTypes[0] === 'bw') {
+								$bwOption.prop('checked', true);
+								formState.print_type = 'bw';
+							} else if (allowedTypes[0] === 'color') {
+								$colorOption.prop('checked', true);
+								formState.print_type = 'color';
+							}
+						}
+					}
+				},
+				error: function() {
+					// On error, don't restrict anything - let user select
+					console.log('Failed to load print types restrictions');
+				}
+			});
+		}
 	}
 
 	/**
