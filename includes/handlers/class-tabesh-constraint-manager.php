@@ -88,7 +88,7 @@ class Tabesh_Constraint_Manager {
 			'allowed_extras'        => array(),
 		);
 
-		// Get selected paper type, paper weight, and binding type from current selection.
+		// Get selected values from current selection.
 		$selected_paper_type   = $current_selection['paper_type'] ?? null;
 		$selected_paper_weight = $current_selection['paper_weight'] ?? null;
 		$selected_binding_type = $current_selection['binding_type'] ?? null;
@@ -100,7 +100,7 @@ class Tabesh_Constraint_Manager {
 				// Get allowed weights for this paper type.
 				$allowed_weights = array();
 				foreach ( $weights as $weight => $print_types ) {
-					// CRITICAL FIX: Check if this weight has at least one valid (non-zero) print type
+					// Check if this weight has at least one valid (non-zero) print type.
 					// A weight with all zero prices should be treated as disabled/unavailable.
 					$available_print_types = array();
 					if ( is_array( $print_types ) ) {
@@ -157,9 +157,8 @@ class Tabesh_Constraint_Manager {
 			}
 		}
 
-		// Determine allowed print types for selected paper and weight.
-		// CRITICAL FIX: Check both paper type AND paper weight to determine available print types.
-		// This ensures only print types with non-zero prices are shown.
+		// Determine available print types based on selected paper type and weight pricing.
+		// Only print types with non-zero prices are included in the result.
 		if ( $selected_paper_type && isset( $page_costs[ $selected_paper_type ] ) ) {
 			$forbidden_prints = $restrictions['forbidden_print_types'][ $selected_paper_type ] ?? array();
 

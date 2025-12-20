@@ -345,8 +345,8 @@
 			return;
 		}
 
-		// CRITICAL FIX: Store available_prints data with each option
-		// This data comes from the backend filtering logic that checks for non-zero prices
+		// Store available print types data with each weight option for frontend filtering.
+		// This data comes from the backend filtering logic that checks for non-zero prices.
 		weights.forEach(function(weightInfo) {
 			const $option = $('<option></option>')
 				.val(weightInfo.weight)
@@ -357,8 +357,7 @@
 	}
 
 	/**
-	 * Load print types based on selected paper weight
-	 * CRITICAL FIX: Now dynamically enables/disables print types based on actual availability
+	 * Load and filter print types based on selected paper weight availability
 	 */
 	function loadPrintTypes() {
 		// First, try to use locally cached data from weight selection
