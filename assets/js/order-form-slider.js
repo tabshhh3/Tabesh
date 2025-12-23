@@ -426,19 +426,20 @@
 		// Enable/disable print type options
 		$('input[name="print_type"]').each(function() {
 			const printType = $(this).val();
+			const $card = $(this).closest('.print-option-card');
 			
 			// If no restrictions, enable all
 			if (!allowedPrintTypes || allowedPrintTypes.length === 0) {
 				$(this).prop('disabled', false);
-				$(this).closest('.print-option-card').removeClass('disabled');
+				$card.removeClass('disabled');
 			} else if (allowedPrintTypes.indexOf(printType) === -1) {
 				// Disable if not in allowed list
 				$(this).prop('disabled', true).prop('checked', false);
-				$(this).closest('.print-option-card').addClass('disabled');
+				$card.addClass('disabled');
 			} else {
 				// Enable if in allowed list
 				$(this).prop('disabled', false);
-				$(this).closest('.print-option-card').removeClass('disabled');
+				$card.removeClass('disabled');
 			}
 		});
 	}
@@ -533,8 +534,8 @@
 
 		extras.forEach(function(extra) {
 			// Handle both object format {name: '...', slug: '...', price: ...} and string format
-			const extraName = (typeof extra === 'object' && extra.name) ? extra.name : extra;
-			const extraValue = (typeof extra === 'object' && extra.slug) ? extra.slug : extra;
+			const extraName = (typeof extra === 'object' && extra !== null && extra.name) ? extra.name : extra;
+			const extraValue = (typeof extra === 'object' && extra !== null && extra.slug) ? extra.slug : extra;
 			
 			const $checkbox = $('<label class="extra-checkbox"></label>')
 				.append(
