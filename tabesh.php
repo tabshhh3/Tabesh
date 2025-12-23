@@ -234,6 +234,13 @@ final class Tabesh {
 	public $product_pricing;
 
 	/**
+	 * Order Form Slider handler
+	 *
+	 * @var Tabesh_Order_Form_Slider
+	 */
+	public $order_form_slider;
+
+	/**
 	 * Cache for settings to avoid redundant database queries
 	 *
 	 * @var array
@@ -310,6 +317,8 @@ final class Tabesh {
 		$this->firewall = new Tabesh_Doomsday_Firewall();
 		// Initialize Product Pricing handler
 		$this->product_pricing = new Tabesh_Product_Pricing();
+		// Initialize Order Form Slider handler
+		$this->order_form_slider = new Tabesh_Order_Form_Slider();
 
 		// Register REST API routes
 		add_action( 'rest_api_init', array( $this, 'register_rest_routes' ) );
@@ -2265,6 +2274,7 @@ final class Tabesh {
 	private function register_shortcodes() {
 		add_shortcode( 'tabesh_order_form', array( $this->order, 'render_order_form' ) );
 		add_shortcode( 'tabesh_order_form_v2', array( $this->order, 'render_order_form_v2' ) );
+		add_shortcode( 'tabesh_order_form_slider', array( $this->order_form_slider, 'render' ) );
 		add_shortcode( 'tabesh_user_orders', array( $this->user, 'render_user_orders' ) );
 		add_shortcode( 'tabesh_staff_panel', array( $this->staff, 'render_staff_panel' ) );
 		add_shortcode( 'tabesh_admin_dashboard', array( $this->admin, 'render_admin_dashboard' ) );
