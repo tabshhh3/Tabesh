@@ -213,6 +213,13 @@ final class Tabesh {
 	public $admin_order_form;
 
 	/**
+	 * Admin order form V2 shortcode handler (Matrix-based pricing)
+	 *
+	 * @var Tabesh_Admin_Order_V2
+	 */
+	public $admin_order_v2;
+
+	/**
 	 * Export/Import handler
 	 *
 	 * @var Tabesh_Export_Import
@@ -304,6 +311,8 @@ final class Tabesh {
 		$this->admin_order_creator = new Tabesh_Admin_Order_Creator();
 		// Initialize admin order form shortcode handler
 		$this->admin_order_form = new Tabesh_Admin_Order_Form();
+		// Initialize admin order form V2 shortcode handler (Matrix-based pricing)
+		$this->admin_order_v2 = new Tabesh_Admin_Order_V2();
 		// Initialize export/import handler
 		$this->export_import = new Tabesh_Export_Import();
 		// Initialize Doomsday Firewall
@@ -2271,6 +2280,7 @@ final class Tabesh {
 		add_shortcode( 'tabesh_file_upload', array( $this, 'render_file_upload' ) );
 		add_shortcode( 'tabesh_upload_manager', array( $this->upload, 'render_upload_manager' ) );
 		add_shortcode( 'tabesh_admin_order_form', array( $this->admin_order_form, 'render' ) );
+		add_shortcode( 'tabesh_admin_order_form_v2', array( $this->admin_order_v2, 'render' ) );
 		add_shortcode( 'tabesh_product_pricing', array( $this, 'render_product_pricing' ) );
 	}
 

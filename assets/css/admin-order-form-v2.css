@@ -1,0 +1,573 @@
+/**
+ * Admin Order Form V2 - Matrix-Based Pricing
+ * 
+ * Modern wizard form for admin order creation
+ * Extends order-form-v2.css with admin-specific features
+ * 
+ * @package Tabesh
+ */
+
+/* Import base wizard styles from order-form-v2.css */
+@import url('order-form-v2.css');
+
+/* CSS Variables for Admin Form */
+:root {
+	--admin-wizard-accent: #7c3aed;
+	--admin-wizard-accent-hover: #6d28d9;
+	--admin-wizard-customer-bg: #faf5ff;
+	--admin-wizard-customer-border: #e9d5ff;
+}
+
+/* Admin Container Override */
+.tabesh-admin-wizard-container {
+	max-width: 1000px;
+	margin: 2rem auto;
+	padding: 0 1rem;
+	direction: rtl;
+	font-family: 'Vazirmatn', 'Vazir', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+/* Admin Header */
+.admin-wizard-header {
+	background: linear-gradient(135deg, var(--admin-wizard-accent) 0%, var(--admin-wizard-accent-hover) 100%);
+	border-radius: var(--wizard-radius);
+	padding: 2rem;
+	margin-bottom: 2rem;
+	text-align: center;
+	color: white;
+	box-shadow: var(--wizard-shadow-lg);
+}
+
+.admin-wizard-title {
+	margin: 0 0 0.5rem 0;
+	font-size: 2rem;
+	font-weight: 700;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 0.75rem;
+}
+
+.admin-wizard-title .dashicons {
+	font-size: 2.5rem;
+	width: 2.5rem;
+	height: 2.5rem;
+}
+
+.admin-wizard-subtitle {
+	margin: 0;
+	opacity: 0.9;
+	font-size: 1rem;
+}
+
+/* Customer Selection Section */
+.customer-section {
+	margin-bottom: 1.5rem;
+}
+
+.customer-type-toggle {
+	display: flex;
+	gap: 1rem;
+	margin-bottom: 1.5rem;
+}
+
+.toggle-option {
+	flex: 1;
+	position: relative;
+	cursor: pointer;
+}
+
+.toggle-option input[type="radio"] {
+	position: absolute;
+	opacity: 0;
+	width: 0;
+	height: 0;
+}
+
+.toggle-option span {
+	display: block;
+	padding: 1rem;
+	text-align: center;
+	background: var(--wizard-bg-secondary);
+	border: 2px solid var(--wizard-border);
+	border-radius: var(--wizard-radius-sm);
+	transition: var(--wizard-transition);
+	font-weight: 600;
+	color: var(--wizard-text);
+}
+
+.toggle-option input[type="radio"]:checked + span {
+	background: var(--admin-wizard-customer-bg);
+	border-color: var(--admin-wizard-accent);
+	color: var(--admin-wizard-accent);
+}
+
+.toggle-option:hover span {
+	border-color: var(--admin-wizard-accent);
+	transform: translateY(-2px);
+	box-shadow: var(--wizard-shadow-md);
+}
+
+/* Customer Search */
+#customer_search {
+	position: relative;
+	z-index: 10;
+}
+
+.search-results {
+	position: absolute;
+	top: 100%;
+	right: 0;
+	left: 0;
+	background: var(--wizard-bg);
+	border: 2px solid var(--wizard-border);
+	border-top: none;
+	border-radius: 0 0 var(--wizard-radius-sm) var(--wizard-radius-sm);
+	box-shadow: var(--wizard-shadow-lg);
+	max-height: 300px;
+	overflow-y: auto;
+	z-index: 1000;
+	margin-top: -1px;
+}
+
+.search-loading,
+.search-no-results,
+.search-error {
+	padding: 1rem;
+	text-align: center;
+	color: var(--wizard-text-muted);
+}
+
+.search-error {
+	color: var(--wizard-danger);
+}
+
+.search-results-list {
+	padding: 0.5rem 0;
+}
+
+.search-result-item {
+	padding: 1rem;
+	cursor: pointer;
+	transition: var(--wizard-transition);
+	border-bottom: 1px solid var(--wizard-border);
+}
+
+.search-result-item:last-child {
+	border-bottom: none;
+}
+
+.search-result-item:hover {
+	background: var(--wizard-bg-secondary);
+}
+
+.search-result-item .user-info {
+	display: flex;
+	flex-direction: column;
+	gap: 0.25rem;
+}
+
+.search-result-item .user-info strong {
+	color: var(--wizard-text);
+	font-size: 1rem;
+}
+
+.search-result-item .user-info span {
+	color: var(--wizard-text-muted);
+	font-size: 0.875rem;
+}
+
+/* Selected Customer Display */
+.selected-customer {
+	margin-top: 1rem;
+}
+
+.selected-customer-card {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	background: var(--admin-wizard-customer-bg);
+	border: 2px solid var(--admin-wizard-customer-border);
+	border-radius: var(--wizard-radius-sm);
+	padding: 1.25rem;
+	animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+	from {
+		opacity: 0;
+		transform: translateY(-10px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+.selected-customer-card .customer-info {
+	display: flex;
+	flex-direction: column;
+	gap: 0.25rem;
+}
+
+.selected-customer-card .customer-info strong {
+	color: var(--admin-wizard-accent);
+	font-size: 1.125rem;
+	font-weight: 700;
+}
+
+.selected-customer-card .customer-info span {
+	color: var(--wizard-text-muted);
+	font-size: 0.875rem;
+}
+
+.remove-customer {
+	background: var(--wizard-danger);
+	color: white;
+	border: none;
+	border-radius: 50%;
+	width: 32px;
+	height: 32px;
+	font-size: 1.5rem;
+	line-height: 1;
+	cursor: pointer;
+	transition: var(--wizard-transition);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.remove-customer:hover {
+	background: #dc2626;
+	transform: scale(1.1);
+}
+
+/* New Customer Form */
+#new-customer-section .form-row {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 1rem;
+	margin-bottom: 1rem;
+}
+
+#create_customer_btn {
+	margin-top: 0.5rem;
+}
+
+/* Price Display */
+.price-section {
+	margin: 2rem 0;
+	text-align: center;
+}
+
+.price-display {
+	margin-top: 1.5rem;
+}
+
+.price-loading {
+	padding: 2rem;
+	color: var(--wizard-text-muted);
+	font-size: 1.125rem;
+}
+
+.price-result {
+	background: var(--wizard-bg-secondary);
+	border-radius: var(--wizard-radius-sm);
+	padding: 1.5rem;
+	box-shadow: var(--wizard-shadow);
+}
+
+.price-row {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 0.75rem 0;
+	border-bottom: 1px solid var(--wizard-border);
+}
+
+.price-row:last-child {
+	border-bottom: none;
+}
+
+.price-row.total {
+	margin-top: 0.5rem;
+	padding-top: 1rem;
+	border-top: 2px solid var(--admin-wizard-accent);
+}
+
+.price-label {
+	color: var(--wizard-text-muted);
+	font-size: 1rem;
+}
+
+.price-row.total .price-label {
+	color: var(--wizard-text);
+	font-weight: 700;
+	font-size: 1.125rem;
+}
+
+.price-value {
+	color: var(--wizard-text);
+	font-size: 1.125rem;
+	font-weight: 600;
+}
+
+.price-row.total .price-value {
+	color: var(--admin-wizard-accent);
+	font-size: 1.5rem;
+	font-weight: 700;
+}
+
+.price-error {
+	padding: 1rem;
+	background: #fee2e2;
+	color: var(--wizard-danger);
+	border-radius: var(--wizard-radius-sm);
+	text-align: center;
+}
+
+/* Order Review */
+.order-review-section {
+	margin-bottom: 2rem;
+}
+
+.order-review-section h3 {
+	margin: 0 0 1rem 0;
+	color: var(--wizard-text);
+	font-size: 1.25rem;
+}
+
+.review-content {
+	background: var(--wizard-bg-secondary);
+	border-radius: var(--wizard-radius-sm);
+	padding: 1.5rem;
+}
+
+.review-grid {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 1rem;
+}
+
+.review-item {
+	display: flex;
+	flex-direction: column;
+	gap: 0.25rem;
+}
+
+.review-label {
+	color: var(--wizard-text-muted);
+	font-size: 0.875rem;
+}
+
+.review-value {
+	color: var(--wizard-text);
+	font-weight: 600;
+	font-size: 1rem;
+}
+
+/* SMS Checkbox */
+.checkbox-label {
+	display: flex;
+	align-items: center;
+	gap: 0.75rem;
+	cursor: pointer;
+	padding: 1rem;
+	background: var(--wizard-bg-secondary);
+	border-radius: var(--wizard-radius-sm);
+	transition: var(--wizard-transition);
+}
+
+.checkbox-label:hover {
+	background: var(--admin-wizard-customer-bg);
+	border-color: var(--admin-wizard-accent);
+}
+
+.checkbox-label input[type="checkbox"] {
+	width: 1.25rem;
+	height: 1.25rem;
+	cursor: pointer;
+	accent-color: var(--admin-wizard-accent);
+}
+
+.checkbox-label span {
+	font-weight: 600;
+	color: var(--wizard-text);
+}
+
+/* Success Message */
+.success-message {
+	text-align: center;
+	padding: 3rem 2rem;
+	background: var(--wizard-bg);
+	border-radius: var(--wizard-radius);
+	box-shadow: var(--wizard-shadow-lg);
+	animation: slideIn 0.5s ease;
+}
+
+.success-icon {
+	width: 80px;
+	height: 80px;
+	margin: 0 auto 1.5rem;
+	background: var(--wizard-success);
+	color: white;
+	font-size: 3rem;
+	line-height: 80px;
+	border-radius: 50%;
+	animation: scaleIn 0.5s ease;
+}
+
+@keyframes scaleIn {
+	from {
+		transform: scale(0);
+	}
+	to {
+		transform: scale(1);
+	}
+}
+
+.success-message h3 {
+	color: var(--wizard-success);
+	margin: 0 0 1rem 0;
+	font-size: 1.75rem;
+}
+
+.success-message p {
+	color: var(--wizard-text-muted);
+	margin: 0 0 2rem 0;
+	font-size: 1.125rem;
+}
+
+.success-message p a {
+	color: var(--admin-wizard-accent);
+	text-decoration: none;
+	font-weight: 600;
+}
+
+.success-message p a:hover {
+	text-decoration: underline;
+}
+
+#create_another_order_btn {
+	margin-top: 1rem;
+}
+
+/* Toast Notifications */
+.tabesh-toast {
+	position: fixed;
+	top: 2rem;
+	left: 50%;
+	transform: translateX(-50%) translateY(-100px);
+	background: white;
+	padding: 1rem 1.5rem;
+	border-radius: var(--wizard-radius-sm);
+	box-shadow: var(--wizard-shadow-lg);
+	z-index: 10000;
+	max-width: 500px;
+	opacity: 0;
+	transition: all 0.3s ease;
+	font-weight: 600;
+}
+
+.tabesh-toast.show {
+	opacity: 1;
+	transform: translateX(-50%) translateY(0);
+}
+
+.tabesh-toast.success {
+	border-right: 4px solid var(--wizard-success);
+	color: var(--wizard-success);
+}
+
+.tabesh-toast.error {
+	border-right: 4px solid var(--wizard-danger);
+	color: var(--wizard-danger);
+}
+
+.tabesh-toast.warning {
+	border-right: 4px solid var(--wizard-warning);
+	color: var(--wizard-warning);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+	.tabesh-admin-wizard-container {
+		padding: 0 0.5rem;
+	}
+
+	.admin-wizard-header {
+		padding: 1.5rem 1rem;
+	}
+
+	.admin-wizard-title {
+		font-size: 1.5rem;
+	}
+
+	.admin-wizard-title .dashicons {
+		font-size: 2rem;
+		width: 2rem;
+		height: 2rem;
+	}
+
+	.customer-type-toggle {
+		flex-direction: column;
+	}
+
+	#new-customer-section .form-row {
+		grid-template-columns: 1fr;
+	}
+
+	.review-grid {
+		grid-template-columns: 1fr;
+	}
+
+	.wizard-navigation {
+		flex-direction: column;
+	}
+
+	.wizard-navigation button {
+		width: 100%;
+	}
+}
+
+@media (max-width: 480px) {
+	.admin-wizard-title {
+		font-size: 1.25rem;
+	}
+
+	.price-row.total .price-value {
+		font-size: 1.25rem;
+	}
+
+	.success-icon {
+		width: 60px;
+		height: 60px;
+		font-size: 2rem;
+		line-height: 60px;
+	}
+}
+
+/* RTL Support */
+[dir="rtl"] .search-results {
+	left: 0;
+	right: 0;
+}
+
+[dir="rtl"] .selected-customer-card {
+	text-align: right;
+}
+
+[dir="rtl"] .tabesh-toast.success {
+	border-right: 4px solid var(--wizard-success);
+	border-left: none;
+}
+
+[dir="rtl"] .tabesh-toast.error {
+	border-right: 4px solid var(--wizard-danger);
+	border-left: none;
+}
+
+[dir="rtl"] .tabesh-toast.warning {
+	border-right: 4px solid var(--wizard-warning);
+	border-left: none;
+}
