@@ -149,7 +149,6 @@ class Tabesh_Admin_Order_Form {
 		$pricing_engine       = new Tabesh_Pricing_Engine();
 		$v2_enabled           = $pricing_engine->is_enabled();
 		$quantity_constraints = array();
-		$v2_pricing_matrices  = array();
 
 		if ( $v2_enabled ) {
 			global $wpdb;
@@ -175,79 +174,13 @@ class Tabesh_Admin_Order_Form {
 						if ( isset( $matrix['quantity_constraints'] ) ) {
 							$quantity_constraints[ $book_size ] = $matrix['quantity_constraints'];
 						}
-
-						// Get restrictions for filtering
-						$restrictions          = $matrix['restrictions'] ?? array();
-						$forbidden_papers      = $restrictions['forbidden_paper_types'] ?? array();
-						$forbidden_bindings    = $restrictions['forbidden_binding_types'] ?? array();
-						$forbidden_print_types = $restrictions['forbidden_print_types'] ?? array();
-
-						$v2_pricing_matrices[ $book_size ] = array(
-							'paper_types'   => array(),
-							'binding_types' => array(),
-							'extras'        => array_keys( $matrix['extras_costs'] ?? array() ),
-						);
-
-						// Filter binding types to exclude forbidden ones
-						$all_bindings = array_keys( $matrix['binding_costs'] ?? array() );
-						foreach ( $all_bindings as $binding_type ) {
-							if ( ! in_array( $binding_type, $forbidden_bindings, true ) ) {
-								$v2_pricing_matrices[ $book_size ]['binding_types'][] = $binding_type;
-							}
-						}
-
-						// Extract paper types with their weights, excluding forbidden ones
-						if ( isset( $matrix['page_costs'] ) && is_array( $matrix['page_costs'] ) ) {
-							foreach ( $matrix['page_costs'] as $paper_type => $weights_data ) {
-								// Skip if paper type is completely forbidden
-								if ( in_array( $paper_type, $forbidden_papers, true ) ) {
-									continue;
-								}
-
-								// CRITICAL FIX: With per-weight restrictions, we need to check each weight individually.
-								// Only include weights that have at least one allowed print type.
-								$available_weights = array();
-								
-								foreach ( array_keys( $weights_data ) as $weight ) {
-									// Get forbidden print types for this specific weight
-									$forbidden_for_weight = $forbidden_print_types[ $paper_type ][ $weight ] ?? array();
-
-									// Check if both bw and color are forbidden for this weight
-									$bw_forbidden    = in_array( 'bw', $forbidden_for_weight, true );
-									$color_forbidden = in_array( 'color', $forbidden_for_weight, true );
-
-									// Only include this weight if at least one print type is allowed
-									if ( ! ( $bw_forbidden && $color_forbidden ) ) {
-										$available_weights[] = $weight;
-									}
-								}
-								
-								// Only include this paper type if it has at least one available weight
-								if ( ! empty( $available_weights ) ) {
-									$v2_pricing_matrices[ $book_size ]['paper_types'][ $paper_type ] = $available_weights;
-								}
-							}
-						}
 					}
 				}
 			}
 
 			// Override settings with V2 data for default book size
-			if ( ! empty( $v2_pricing_matrices ) && ! empty( $configured_sizes ) ) {
-				$default_size = $configured_sizes[0];
-				if ( isset( $v2_pricing_matrices[ $default_size ] ) ) {
-					$v2_data    = $v2_pricing_matrices[ $default_size ];
-					$book_sizes = $configured_sizes;
-					if ( ! empty( $v2_data['paper_types'] ) ) {
-						$paper_types = $v2_data['paper_types'];
-					}
-					if ( ! empty( $v2_data['binding_types'] ) ) {
-						$binding_types = $v2_data['binding_types'];
-					}
-					if ( ! empty( $v2_data['extras'] ) ) {
-						$extras = $v2_data['extras'];
-					}
-				}
+			if ( ! empty( $configured_sizes ) ) {
+				$book_sizes = $configured_sizes;
 			}
 		}
 
@@ -273,7 +206,6 @@ class Tabesh_Admin_Order_Form {
 					'quantityStep'      => intval( Tabesh()->get_setting( 'quantity_step', 10 ) ),
 				),
 				'v2Enabled'           => $v2_enabled,
-				'v2PricingMatrices'   => $v2_pricing_matrices,
 				'quantityConstraints' => $quantity_constraints,
 				'strings'             => array(
 					'selectUser'        => __( 'انتخاب کاربر', 'tabesh' ),

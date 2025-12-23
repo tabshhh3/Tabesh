@@ -492,6 +492,21 @@
     border-color: var(--aof-primary);
 }
 
+/* Disabled chips (when extra is not allowed for selected binding) */
+/* Using class for better browser compatibility - JS adds .chip-disabled */
+.tabesh-aof-chip.chip-disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+/* Enhanced selector for browsers that support :has() */
+.tabesh-aof-chip:has(input:disabled) {
+    opacity: 0.4;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
 .tabesh-aof-notes {
     flex: 1;
     min-width: 200px;

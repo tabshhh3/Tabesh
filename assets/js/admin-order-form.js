@@ -314,10 +314,26 @@
             updatePaperWeights();
         });
 
+        // Update print type availability when paper weight changes (V2 cascade)
+        // به‌روزرسانی دسترسی نوع چاپ هنگام تغییر گرماژ کاغذ (cascade V2)
+        $('#aof-paper-weight').on('change', function() {
+            if (tabeshAdminOrderForm.v2Enabled) {
+                updatePrintTypeAvailability();
+            }
+        });
+
         // Update page count fields based on print type
         // به‌روزرسانی فیلدهای تعداد صفحات بر اساس نوع چاپ
         $('#aof-print-type').on('change', function() {
             updatePageCountFields();
+        });
+
+        // Update extras availability when binding type changes (V2 cascade)
+        // به‌روزرسانی دسترسی آپشن‌ها هنگام تغییر نوع صحافی (cascade V2)
+        $('#aof-binding-type').on('change', function() {
+            if (tabeshAdminOrderForm.v2Enabled) {
+                updateExtrasAvailability();
+            }
         });
         
         // Initialize page count fields on load / راه‌اندازی فیلدهای تعداد صفحات در بارگذاری
@@ -347,83 +363,240 @@
     }
 
     /**
-     * Update form parameters when book size changes (V2 only)
-     * به‌روزرسانی پارامترهای فرم هنگام تغییر قطع کتاب (فقط V2)
+     * Update print type availability based on selected paper weight (V2 cascade)
+     * به‌روزرسانی دسترسی نوع چاپ بر اساس گرماژ انتخاب شده
      */
-    function updateFormParametersForBookSize(bookSize) {
-        if (!tabeshAdminOrderForm.v2Enabled || !tabeshAdminOrderForm.v2PricingMatrices || 
-            !tabeshAdminOrderForm.v2PricingMatrices[bookSize]) {
-            console.warn('Tabesh: V2 pricing matrix not found for book size:', bookSize);
+    function updatePrintTypeAvailability() {
+        const $weightSelect = $('#aof-paper-weight');
+        const selectedOption = $weightSelect.find('option:selected');
+        const availablePrints = selectedOption.data('available_prints') || [];
+
+        if (availablePrints.length === 0) {
+            // No restriction data, allow all
             return;
         }
 
-        const matrix = tabeshAdminOrderForm.v2PricingMatrices[bookSize];
+        // Mapping of print type values to their internal identifiers
+        const printTypeMap = {
+            'bw': ['سیاه و سفید', 'bw'],
+            'color': ['رنگی', 'color'],
+            'mixed': ['ترکیبی', 'mixed']
+        };
+
+        // Get all print type options
+        const $printTypeSelect = $('#aof-print-type');
+        const $options = $printTypeSelect.find('option');
         
+        $options.each(function() {
+            const value = $(this).val();
+            if (!value) {
+                return; // Skip empty option
+            }
+
+            // Check which type this option represents
+            let isAllowed = true;
+            if (printTypeMap.bw.includes(value)) {
+                isAllowed = availablePrints.includes('bw');
+            } else if (printTypeMap.color.includes(value)) {
+                isAllowed = availablePrints.includes('color');
+            } else if (printTypeMap.mixed.includes(value)) {
+                // Mixed requires both to be available
+                isAllowed = availablePrints.includes('bw') && availablePrints.includes('color');
+            }
+
+            $(this).prop('disabled', !isAllowed);
+        });
+
+        // Clear selection if current selection is now disabled
+        const currentValue = $printTypeSelect.val();
+        if (currentValue && $printTypeSelect.find('option:selected').prop('disabled')) {
+            $printTypeSelect.val('');
+            updatePageCountFields();
+        }
+    }
+
+    /**
+     * Update extras availability based on selected binding type (V2 cascade)
+     * به‌روزرسانی دسترسی آپشن‌ها بر اساس نوع صحافی انتخاب شده
+     */
+    function updateExtrasAvailability() {
+        const bookSize = $('#aof-book-size').val();
+        const bindingType = $('#aof-binding-type').val();
+
+        if (!bookSize || !bindingType) {
+            return;
+        }
+
+        // Call API to get allowed extras for this binding type
+        $.ajax({
+            url: tabeshAdminOrderForm.restUrl + '/get-allowed-options',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                book_size: bookSize,
+                current_selection: {
+                    binding_type: bindingType
+                }
+            }),
+            beforeSend: function(xhr) {
+                xhr.setRequestHeader('X-WP-Nonce', tabeshAdminOrderForm.nonce);
+            },
+            success: function(response) {
+                if (response.success && response.data && response.data.allowed_extras) {
+                    updateExtrasCheckboxes(response.data.allowed_extras);
+                }
+            },
+            error: function(xhr) {
+                console.error('Tabesh: Error fetching allowed extras:', xhr.responseText);
+            }
+        });
+    }
+
+    /**
+     * Update extras checkboxes based on allowed list
+     * به‌روزرسانی چک‌باکس‌های آپشن بر اساس لیست مجاز
+     */
+    function updateExtrasCheckboxes(allowedExtras) {
+        if (!allowedExtras || allowedExtras.length === 0) {
+            // Disable all extras
+            $('input[name="extras[]"]').prop('disabled', true).prop('checked', false);
+            $('input[name="extras[]"]').closest('.tabesh-aof-chip').addClass('chip-disabled');
+            return;
+        }
+
+        // Normalize allowed extra names - handle both string and object formats
+        const allowedNames = allowedExtras.map(function(extra) {
+            if (typeof extra === 'string') {
+                return extra;
+            } else if (typeof extra === 'object' && extra !== null) {
+                return extra.name || '';
+            }
+            return '';
+        }).filter(function(name) {
+            return name !== '';
+        });
+
+        // Update each checkbox
+        $('input[name="extras[]"]').each(function() {
+            const extraValue = $(this).val();
+            if (allowedNames.includes(extraValue)) {
+                $(this).prop('disabled', false);
+                $(this).closest('.tabesh-aof-chip').removeClass('chip-disabled');
+            } else {
+                $(this).prop('disabled', true).prop('checked', false);
+                $(this).closest('.tabesh-aof-chip').addClass('chip-disabled');
+            }
+        });
+    }
+
+    /**
+     * Update form parameters when book size changes (V2 only)
+     * به‌روزرسانی پارامترهای فرم هنگام تغییر قطع کتاب (فقط V2)
+     * 
+     * Uses REST API to get allowed options dynamically from backend
+     */
+    function updateFormParametersForBookSize(bookSize) {
+        if (!tabeshAdminOrderForm.v2Enabled) {
+            console.warn('Tabesh: V2 pricing engine is not enabled');
+            return;
+        }
+
+        if (!bookSize) {
+            console.warn('Tabesh: No book size selected');
+            return;
+        }
+
+        // Call REST API to get allowed options
+        $.ajax({
+            url: tabeshAdminOrderForm.restUrl + '/get-allowed-options',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                book_size: bookSize,
+                current_selection: {}
+            }),
+            beforeSend: function(xhr) {
+                xhr.setRequestHeader('X-WP-Nonce', tabeshAdminOrderForm.nonce);
+            },
+            success: function(response) {
+                if (response.success && response.data) {
+                    populateAllowedOptions(response.data);
+                } else {
+                    console.error('Tabesh: Failed to get allowed options:', response.message);
+                }
+            },
+            error: function(xhr) {
+                console.error('Tabesh: Error fetching allowed options:', xhr.responseText);
+            }
+        });
+    }
+
+    /**
+     * Populate form fields with allowed options from API response
+     * پر کردن فیلدهای فرم با گزینه‌های مجاز از پاسخ API
+     */
+    function populateAllowedOptions(data) {
+        const currentPaperType = $('#aof-paper-type').val();
+        const currentBindingType = $('#aof-binding-type').val();
+
         // Update paper types
         const $paperTypeSelect = $('#aof-paper-type');
-        const currentPaperType = $paperTypeSelect.val();
         $paperTypeSelect.empty().append('<option value="">' + tabeshAdminOrderForm.strings.selectOption + '</option>');
         
-        if (matrix.paper_types) {
-            Object.keys(matrix.paper_types).forEach(function(paperType) {
-                $paperTypeSelect.append('<option value="' + paperType + '">' + paperType + '</option>');
+        if (data.allowed_papers && data.allowed_papers.length > 0) {
+            data.allowed_papers.forEach(function(paper) {
+                $paperTypeSelect.append('<option value="' + paper.type + '">' + paper.type + '</option>');
             });
             
-            if (currentPaperType && matrix.paper_types[currentPaperType]) {
-                $paperTypeSelect.val(currentPaperType);
-                updatePaperWeights();
-            } else {
-                $('#aof-paper-weight').empty().append('<option value="">' + 
-                    tabeshAdminOrderForm.strings.selectPaperFirst + '</option>');
+            // Restore selection if still valid
+            if (currentPaperType) {
+                const isValid = data.allowed_papers.some(function(p) { return p.type === currentPaperType; });
+                if (isValid) {
+                    $paperTypeSelect.val(currentPaperType);
+                    updatePaperWeightsFromAPI();
+                }
             }
         }
         
         // Update binding types
         const $bindingTypeSelect = $('#aof-binding-type');
-        const currentBindingType = $bindingTypeSelect.val();
         $bindingTypeSelect.empty().append('<option value="">' + tabeshAdminOrderForm.strings.selectOption + '</option>');
         
-        if (matrix.binding_types && matrix.binding_types.length > 0) {
-            matrix.binding_types.forEach(function(bindingType) {
-                $bindingTypeSelect.append('<option value="' + bindingType + '">' + bindingType + '</option>');
+        if (data.allowed_bindings && data.allowed_bindings.length > 0) {
+            data.allowed_bindings.forEach(function(binding) {
+                $bindingTypeSelect.append('<option value="' + binding.type + '">' + binding.type + '</option>');
             });
             
-            if (currentBindingType && matrix.binding_types.indexOf(currentBindingType) !== -1) {
-                $bindingTypeSelect.val(currentBindingType);
+            // Restore selection if still valid
+            if (currentBindingType) {
+                const isValid = data.allowed_bindings.some(function(b) { return b.type === currentBindingType; });
+                if (isValid) {
+                    $bindingTypeSelect.val(currentBindingType);
+                }
             }
         }
         
-        // Update extras (chips)
-        const $extrasContainer = $('#aof-extras-container');
-        if ($extrasContainer.length && matrix.extras && matrix.extras.length > 0) {
-            const checkedExtras = [];
-            $('input[name="extras[]"]:checked').each(function() {
-                checkedExtras.push($(this).val());
-            });
-            
-            $extrasContainer.empty();
-            matrix.extras.forEach(function(extra) {
-                const isChecked = checkedExtras.indexOf(extra) !== -1 ? 'checked' : '';
-                $extrasContainer.append(
-                    '<label class="tabesh-aof-chip">' +
-                    '<input type="checkbox" name="extras[]" value="' + extra + '" ' + isChecked + '>' +
-                    '<span class="chip-text">' + extra + '</span>' +
-                    '</label>'
-                );
-            });
-            
-            // Re-attach event handlers
-            $('input[name="extras[]"]').on('change', function() {
-                $(this).closest('.tabesh-aof-chip').toggleClass('chip-checked', $(this).is(':checked'));
-            });
-        }
+        // Store the allowed options data for later use
+        $('#aof-book-size').data('allowedOptions', data);
     }
 
     /**
-     * Update paper weight options based on selected paper type
-     * به‌روزرسانی گزینه‌های گرماژ کاغذ بر اساس نوع کاغذ انتخاب شده
+     * Update paper weight options based on selected paper type (using API data)
+     * به‌روزرسانی گزینه‌های گرماژ کاغذ بر اساس نوع کاغذ انتخاب شده (با استفاده از داده API)
      */
     function updatePaperWeights() {
+        if (!tabeshAdminOrderForm.v2Enabled) {
+            updatePaperWeightsLegacy();
+            return;
+        }
+        updatePaperWeightsFromAPI();
+    }
+
+    /**
+     * Update paper weights using stored API data from book size selection
+     * به‌روزرسانی گرماژ با استفاده از داده ذخیره شده API
+     */
+    function updatePaperWeightsFromAPI() {
         const paperType = $('#aof-paper-type').val();
         const $weightSelect = $('#aof-paper-weight');
         
@@ -431,29 +604,60 @@
             (paperType ? tabeshAdminOrderForm.strings.selectOption : tabeshAdminOrderForm.strings.selectPaperFirst) + 
         '</option>');
         
-        // For V2, use book-size-specific weights
-        if (tabeshAdminOrderForm.v2Enabled) {
-            const bookSize = $('#aof-book-size').val();
-            if (bookSize && tabeshAdminOrderForm.v2PricingMatrices && 
-                tabeshAdminOrderForm.v2PricingMatrices[bookSize] &&
-                tabeshAdminOrderForm.v2PricingMatrices[bookSize].paper_types &&
-                tabeshAdminOrderForm.v2PricingMatrices[bookSize].paper_types[paperType]) {
-                const weights = tabeshAdminOrderForm.v2PricingMatrices[bookSize].paper_types[paperType];
-                weights.forEach(function(weight) {
-                    $weightSelect.append('<option value="' + weight + '">' + weight + '</option>');
-                });
-                return;
-            }
+        if (!paperType) {
+            return;
         }
+
+        // Get stored allowed options from book size selection
+        const allowedOptions = $('#aof-book-size').data('allowedOptions');
+        if (!allowedOptions || !allowedOptions.allowed_papers) {
+            // No data available, but don't fetch automatically to avoid race conditions
+            // User should select book size first
+            console.warn('Tabesh: No allowed options data found. Please select a book size first.');
+            return;
+        }
+
+        // Find the selected paper type in allowed papers
+        const paper = allowedOptions.allowed_papers.find(function(p) {
+            return p.type === paperType;
+        });
+
+        if (paper && paper.weights && paper.weights.length > 0) {
+            paper.weights.forEach(function(weightInfo) {
+                const $option = $('<option></option>')
+                    .val(weightInfo.weight)
+                    .text(weightInfo.weight)
+                    .data('available_prints', weightInfo.available_prints || []);
+                $weightSelect.append($option);
+            });
+        }
+    }
+
+    /**
+     * Legacy fallback for paper weight update when V2 is not enabled
+     * بازگشت به روش قدیمی برای بروزرسانی گرماژ
+     */
+    function updatePaperWeightsLegacy() {
+        const paperType = $('#aof-paper-type').val();
+        const $weightSelect = $('#aof-paper-weight');
         
-        // Fallback to V1 method
+        $weightSelect.empty().append('<option value="">' + 
+            (paperType ? tabeshAdminOrderForm.strings.selectOption : tabeshAdminOrderForm.strings.selectPaperFirst) + 
+        '</option>');
+        
         if (paperType && tabeshAdminOrderForm.settings && 
             tabeshAdminOrderForm.settings.paperTypes && 
             tabeshAdminOrderForm.settings.paperTypes[paperType]) {
             const weights = tabeshAdminOrderForm.settings.paperTypes[paperType];
-            weights.forEach(function(weight) {
-                $weightSelect.append('<option value="' + weight + '">' + weight + '</option>');
-            });
+            if (Array.isArray(weights)) {
+                weights.forEach(function(weight) {
+                    $weightSelect.append('<option value="' + weight + '">' + weight + '</option>');
+                });
+            } else if (typeof weights === 'object') {
+                Object.keys(weights).forEach(function(weight) {
+                    $weightSelect.append('<option value="' + weight + '">' + weight + '</option>');
+                });
+            }
         }
     }
 
