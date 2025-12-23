@@ -332,6 +332,7 @@
         // به‌روزرسانی دسترسی آپشن‌ها هنگام تغییر نوع صحافی (cascade V2)
         $('#aof-binding-type').on('change', function() {
             if (tabeshAdminOrderForm.v2Enabled) {
+                updateCoverWeights();
                 updateExtrasAvailability();
             }
         });
@@ -490,6 +491,38 @@
     }
 
     /**
+     * Update cover weights based on selected binding type (V2 cascade)
+     * به‌روزرسانی گرماژ جلد بر اساس نوع صحافی انتخاب شده
+     */
+    function updateCoverWeights() {
+        const $bindingSelect = $('#aof-binding-type');
+        const $coverSelect = $('#aof-cover-paper-weight');
+        const selectedOption = $bindingSelect.find('option:selected');
+        const coverWeights = selectedOption.data('cover_weights');
+
+        // Clear current options
+        $coverSelect.empty();
+
+        if (!coverWeights || coverWeights.length === 0) {
+            // No cover weights available for this binding type
+            $coverSelect.append('<option value="">' + tabeshAdminOrderForm.strings.selectOption + '</option>');
+            return;
+        }
+
+        // Add default empty option
+        $coverSelect.append('<option value="">' + tabeshAdminOrderForm.strings.selectOption + '</option>');
+
+        // Add allowed cover weights
+        coverWeights.forEach(function(weightInfo) {
+            $coverSelect.append(
+                $('<option></option>')
+                    .val(weightInfo.weight)
+                    .text(weightInfo.weight)
+            );
+        });
+    }
+
+    /**
      * Update form parameters when book size changes (V2 only)
      * به‌روزرسانی پارامترهای فرم هنگام تغییر قطع کتاب (فقط V2)
      * 
@@ -564,7 +597,11 @@
         
         if (data.allowed_bindings && data.allowed_bindings.length > 0) {
             data.allowed_bindings.forEach(function(binding) {
-                $bindingTypeSelect.append('<option value="' + binding.type + '">' + binding.type + '</option>');
+                const $option = $('<option></option>')
+                    .val(binding.type)
+                    .text(binding.type)
+                    .data('cover_weights', binding.cover_weights || []);
+                $bindingTypeSelect.append($option);
             });
             
             // Restore selection if still valid
@@ -572,6 +609,10 @@
                 const isValid = data.allowed_bindings.some(function(b) { return b.type === currentBindingType; });
                 if (isValid) {
                     $bindingTypeSelect.val(currentBindingType);
+                    // Trigger cover weight update
+                    if (tabeshAdminOrderForm.v2Enabled) {
+                        updateCoverWeights();
+                    }
                 }
             }
         }
