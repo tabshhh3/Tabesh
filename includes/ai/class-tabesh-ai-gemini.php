@@ -58,8 +58,29 @@ class Tabesh_AI_Gemini {
 			return new WP_Error( 'no_api_key', __( 'کلید API تنظیم نشده است', 'tabesh' ) );
 		}
 
-		// Build system prompt.
+		// Build system prompt with enriched context.
 		$system_prompt = $this->build_system_prompt( $context );
+
+		// Get user persona if available.
+		$persona_context = '';
+		if ( ! empty( $context['user_id'] ) || ! empty( $context['guest_uuid'] ) ) {
+			$persona_builder = new Tabesh_AI_Persona_Builder();
+			$persona = $persona_builder->build_persona(
+				! empty( $context['user_id'] ) ? $context['user_id'] : 0,
+				! empty( $context['guest_uuid'] ) ? $context['guest_uuid'] : ''
+			);
+			$persona_context = "\n\n" . $persona_builder->get_persona_summary( $persona );
+		}
+
+		// Get page context if available.
+		$page_context = '';
+		if ( ! empty( $context['page_context'] ) ) {
+			$analyzer = new Tabesh_AI_Page_Analyzer();
+			$page_context = "\n\n" . $analyzer->build_gemini_context(
+				$context['page_context'],
+				! empty( $context['user_profile'] ) ? $context['user_profile'] : array()
+			);
+		}
 
 		// Build request body.
 		$body = array(
@@ -67,7 +88,7 @@ class Tabesh_AI_Gemini {
 				array(
 					'parts' => array(
 						array(
-							'text' => $system_prompt . "\n\n" . $message,
+							'text' => $system_prompt . $persona_context . $page_context . "\n\n" . $message,
 						),
 					),
 				),

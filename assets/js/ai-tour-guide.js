@@ -18,6 +18,94 @@
     let $tooltip = null;
 
     /**
+     * Instant highlight element (for quick guidance)
+     */
+    function instantHighlight(selector, message, options) {
+        options = options || {};
+        
+        // Find element
+        const $element = $(selector);
+        if (!$element.length) {
+            console.warn('Instant highlight target not found:', selector);
+            return;
+        }
+
+        // Scroll to element
+        scrollToElement($element, function() {
+            // Create highlight wrapper
+            const $highlight = $('<div class="tabesh-ai-instant-highlight"></div>');
+            
+            // Set arrow direction
+            const arrow = options.arrow || 'top';
+            $highlight.attr('data-arrow', arrow);
+            
+            // Add red flag class if confused user
+            if (options.redFlag) {
+                $highlight.addClass('red-flag');
+            }
+            
+            // Add pulse ring
+            $highlight.append('<div class="pulse-ring"></div>');
+            
+            // Add arrow pointer
+            $highlight.append('<div class="arrow-pointer"></div>');
+            
+            // Add tooltip message
+            if (message) {
+                $highlight.append('<div class="tooltip-message">' + escapeHtml(message) + '</div>');
+            }
+            
+            // Add spotlight if needed
+            if (options.spotlight) {
+                $highlight.append('<div class="tabesh-ai-spotlight"></div>');
+            }
+            
+            // Position highlight
+            const rect = $element[0].getBoundingClientRect();
+            $highlight.css({
+                position: 'fixed',
+                top: rect.top + 'px',
+                left: rect.left + 'px',
+                width: rect.width + 'px',
+                height: rect.height + 'px'
+            });
+            
+            // Add to body
+            $('body').append($highlight);
+            
+            // Auto-remove after duration (default 5 seconds)
+            const duration = options.duration || 5000;
+            setTimeout(function() {
+                $highlight.fadeOut(300, function() {
+                    $highlight.remove();
+                });
+            }, duration);
+            
+            // Track event
+            if (window.tabeshAITracker) {
+                window.tabeshAITracker.trackEvent('instant_highlight', {
+                    selector: selector,
+                    message_length: message ? message.length : 0
+                });
+            }
+        });
+    }
+
+    /**
+     * Escape HTML
+     */
+    function escapeHtml(text) {
+        const map = {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#039;'
+        };
+        return text.replace(/[&<>"']/g, function(m) { return map[m]; });
+    }
+
+    /**
      * Start tour
      */
     function startTour(target) {
@@ -446,6 +534,7 @@
         previousStep: previousStep,
         highlightElement: highlightElementPublic,
         highlightConfusedElement: highlightConfusedElement,
+        instantHighlight: instantHighlight,
         addSpotlight: addSpotlight,
         scrollToElement: scrollToElement
     };

@@ -73,6 +73,68 @@ class Tabesh_AI_Browser {
 			)
 		);
 
+		// Analyze page context.
+		register_rest_route(
+			TABESH_REST_NAMESPACE,
+			'/ai/page/analyze',
+			array(
+				'methods'             => 'POST',
+				'callback'            => array( $this, 'rest_analyze_page' ),
+				'permission_callback' => '__return_true',
+				'args'                => array(
+					'client_data' => array(
+						'required' => true,
+						'type'     => 'object',
+					),
+					'guest_uuid'  => array(
+						'required'          => false,
+						'type'              => 'string',
+						'sanitize_callback' => 'sanitize_text_field',
+					),
+				),
+			)
+		);
+
+		// Get field explanation.
+		register_rest_route(
+			TABESH_REST_NAMESPACE,
+			'/ai/field/explain',
+			array(
+				'methods'             => 'POST',
+				'callback'            => array( $this, 'rest_explain_field' ),
+				'permission_callback' => '__return_true',
+				'args'                => array(
+					'field_info' => array(
+						'required' => true,
+						'type'     => 'object',
+					),
+					'guest_uuid' => array(
+						'required'          => false,
+						'type'              => 'string',
+						'sanitize_callback' => 'sanitize_text_field',
+					),
+				),
+			)
+		);
+
+		// Get user persona.
+		register_rest_route(
+			TABESH_REST_NAMESPACE,
+			'/ai/persona/build',
+			array(
+				'methods'             => 'POST',
+				'callback'            => array( $this, 'rest_build_persona' ),
+				'permission_callback' => '__return_true',
+				'args'                => array(
+					'guest_uuid' => array(
+						'required'          => false,
+						'type'              => 'string',
+						'sanitize_callback' => 'sanitize_text_field',
+					),
+				),
+			)
+		);
+
 		// Get user profile.
 		register_rest_route(
 			TABESH_REST_NAMESPACE,
@@ -214,6 +276,103 @@ class Tabesh_AI_Browser {
 			'tracking_failed',
 			__( 'خطا در ثبت رفتار', 'tabesh' ),
 			array( 'status' => 500 )
+		);
+	}
+
+	/**
+	 * REST API: Analyze page context
+	 *
+	 * @param WP_REST_Request $request Request object.
+	 * @return WP_REST_Response|WP_Error Response or error.
+	 */
+	public function rest_analyze_page( $request ) {
+		$client_data = $request->get_param( 'client_data' );
+		$guest_uuid  = $request->get_param( 'guest_uuid' );
+
+		$analyzer = new Tabesh_AI_Page_Analyzer();
+		$context  = $analyzer->extract_page_context( $client_data );
+
+		// Get user profile for enriched context.
+		$user_id = get_current_user_id();
+		$profile_manager = new Tabesh_AI_User_Profile();
+
+		if ( $user_id ) {
+			$profile = $profile_manager->get_user_profile( $user_id );
+		} elseif ( $guest_uuid ) {
+			$profile = $profile_manager->get_guest_profile( $guest_uuid );
+		} else {
+			$profile = array();
+		}
+
+		// Build Gemini context.
+		$gemini_context = $analyzer->build_gemini_context( $context, $profile );
+
+		return rest_ensure_response(
+			array(
+				'success'        => true,
+				'context'        => $context,
+				'gemini_context' => $gemini_context,
+			)
+		);
+	}
+
+	/**
+	 * REST API: Explain field
+	 *
+	 * @param WP_REST_Request $request Request object.
+	 * @return WP_REST_Response|WP_Error Response or error.
+	 */
+	public function rest_explain_field( $request ) {
+		$field_info = $request->get_param( 'field_info' );
+		$guest_uuid = $request->get_param( 'guest_uuid' );
+
+		// Get user profile.
+		$user_id = get_current_user_id();
+		$profile_manager = new Tabesh_AI_User_Profile();
+
+		if ( $user_id ) {
+			$profile = $profile_manager->get_user_profile( $user_id );
+		} elseif ( $guest_uuid ) {
+			$profile = $profile_manager->get_guest_profile( $guest_uuid );
+		} else {
+			$profile = array();
+		}
+
+		// Get explanation.
+		$explainer = new Tabesh_AI_Field_Explainer();
+		$explanation = $explainer->get_field_explanation( $field_info, $profile );
+
+		if ( is_wp_error( $explanation ) ) {
+			return $explanation;
+		}
+
+		return rest_ensure_response(
+			array(
+				'success'     => true,
+				'explanation' => $explanation,
+			)
+		);
+	}
+
+	/**
+	 * REST API: Build user persona
+	 *
+	 * @param WP_REST_Request $request Request object.
+	 * @return WP_REST_Response|WP_Error Response or error.
+	 */
+	public function rest_build_persona( $request ) {
+		$guest_uuid = $request->get_param( 'guest_uuid' );
+		$user_id    = get_current_user_id();
+
+		$persona_builder = new Tabesh_AI_Persona_Builder();
+		$persona = $persona_builder->build_persona( $user_id, $guest_uuid );
+
+		return rest_ensure_response(
+			array(
+				'success' => true,
+				'persona' => $persona,
+				'summary' => $persona_builder->get_persona_summary( $persona ),
+			)
 		);
 	}
 
@@ -492,11 +651,34 @@ class Tabesh_AI_Browser {
 			TABESH_VERSION
 		);
 
+		wp_enqueue_style(
+			'tabesh-ai-instant-highlight',
+			TABESH_PLUGIN_URL . 'assets/css/ai-instant-highlight.css',
+			array(),
+			TABESH_VERSION
+		);
+
 		// Enqueue JavaScript.
+		wp_enqueue_script(
+			'tabesh-ai-page-analyzer',
+			TABESH_PLUGIN_URL . 'assets/js/ai-page-analyzer.js',
+			array( 'jquery' ),
+			TABESH_VERSION,
+			true
+		);
+
+		wp_enqueue_script(
+			'tabesh-ai-field-explainer',
+			TABESH_PLUGIN_URL . 'assets/js/ai-field-explainer.js',
+			array( 'jquery', 'tabesh-ai-page-analyzer' ),
+			TABESH_VERSION,
+			true
+		);
+
 		wp_enqueue_script(
 			'tabesh-ai-browser',
 			TABESH_PLUGIN_URL . 'assets/js/ai-browser.js',
-			array( 'jquery' ),
+			array( 'jquery', 'tabesh-ai-page-analyzer' ),
 			TABESH_VERSION,
 			true
 		);
@@ -522,12 +704,13 @@ class Tabesh_AI_Browser {
 			'tabesh-ai-browser',
 			'tabeshAIBrowser',
 			array(
-				'ajaxUrl'         => rest_url( TABESH_REST_NAMESPACE ),
-				'nonce'           => wp_create_nonce( 'wp_rest' ),
-				'isLoggedIn'      => is_user_logged_in(),
-				'userId'          => get_current_user_id(),
-				'trackingEnabled' => get_option( 'tabesh_ai_tracking_enabled', true ),
-				'strings'         => array(
+				'ajaxUrl'              => rest_url( TABESH_REST_NAMESPACE ),
+				'nonce'                => wp_create_nonce( 'wp_rest' ),
+				'isLoggedIn'           => is_user_logged_in(),
+				'userId'               => get_current_user_id(),
+				'trackingEnabled'      => get_option( 'tabesh_ai_tracking_enabled', true ),
+				'fieldExplainerEnabled' => get_option( 'tabesh_ai_field_explainer_enabled', true ),
+				'strings'              => array(
 					'greeting'             => __( 'سلام! من دستیار هوشمند تابش هستم. اجازه میدید کمکتون کنم؟', 'tabesh' ),
 					'profession_buyer'     => __( 'آیا خریدار کتاب هستید؟', 'tabesh' ),
 					'profession_author'    => __( 'آیا نویسنده هستید؟', 'tabesh' ),
