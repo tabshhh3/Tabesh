@@ -65,7 +65,7 @@ class Tabesh_AI_Gemini {
 		$persona_context = '';
 		if ( ! empty( $context['user_id'] ) || ! empty( $context['guest_uuid'] ) ) {
 			$persona_builder = new Tabesh_AI_Persona_Builder();
-			$persona = $persona_builder->build_persona(
+			$persona         = $persona_builder->build_persona(
 				! empty( $context['user_id'] ) ? $context['user_id'] : 0,
 				! empty( $context['guest_uuid'] ) ? $context['guest_uuid'] : ''
 			);
@@ -75,7 +75,7 @@ class Tabesh_AI_Gemini {
 		// Get page context if available.
 		$page_context = '';
 		if ( ! empty( $context['page_context'] ) ) {
-			$analyzer = new Tabesh_AI_Page_Analyzer();
+			$analyzer     = new Tabesh_AI_Page_Analyzer();
 			$page_context = "\n\n" . $analyzer->build_gemini_context(
 				$context['page_context'],
 				! empty( $context['user_profile'] ) ? $context['user_profile'] : array()
