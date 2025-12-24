@@ -628,30 +628,32 @@ class Tabesh_AI_Site_Indexer {
 			return array();
 		}
 
-		// Build search conditions.
-		$where_conditions = array();
-		$where_values     = array();
+		// Build search conditions dynamically.
+		$where_parts = array();
+		$sql_params  = array();
 
 		foreach ( $keywords as $keyword ) {
-			$like_pattern       = '%' . $wpdb->esc_like( $keyword ) . '%';
-			$where_conditions[] = '(page_title LIKE %s OR page_content_summary LIKE %s OR page_keywords LIKE %s OR page_type LIKE %s)';
-			$where_values[]     = $like_pattern;
-			$where_values[]     = $like_pattern;
-			$where_values[]     = $like_pattern;
-			$where_values[]     = $like_pattern;
+			$like_pattern  = '%' . $wpdb->esc_like( $keyword ) . '%';
+			$where_parts[] = '(page_title LIKE %s OR page_content_summary LIKE %s OR page_keywords LIKE %s OR page_type LIKE %s)';
+			$sql_params[]  = $like_pattern;
+			$sql_params[]  = $like_pattern;
+			$sql_params[]  = $like_pattern;
+			$sql_params[]  = $like_pattern;
 		}
 
-		$where_clause = implode( ' OR ', $where_conditions );
+		// Add limit parameter.
+		$sql_params[] = $limit;
 
-		// Add limit at the end.
-		$where_values[] = $limit;
+		// Build the SQL query.
+		$where_clause = implode( ' OR ', $where_parts );
+		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$sql = "SELECT * FROM {$table_name} WHERE {$where_clause} ORDER BY last_scanned DESC LIMIT %d";
+		// phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$results = $wpdb->get_results(
-			$wpdb->prepare(
-				"SELECT * FROM {$table_name} WHERE {$where_clause} ORDER BY last_scanned DESC LIMIT %d",
-				$where_values
-			),
+			// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+			$wpdb->prepare( $sql, $sql_params ),
 			ARRAY_A
 		);
 
