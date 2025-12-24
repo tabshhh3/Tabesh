@@ -869,6 +869,42 @@ class Tabesh_Admin {
             Tabesh_AI_Config::set( 'allowed_roles', array() );
         }
 
+        // Handle AI Browser settings (using WordPress options)
+        update_option( 'tabesh_ai_browser_enabled', isset( $post_data['ai_browser_enabled'] ) ? 1 : 0 );
+        update_option( 'tabesh_ai_tracking_enabled', isset( $post_data['ai_tracking_enabled'] ) ? 1 : 0 );
+        update_option( 'tabesh_ai_proactive_help_enabled', isset( $post_data['ai_proactive_help_enabled'] ) ? 1 : 0 );
+        
+        if ( isset( $post_data['ai_idle_timeout'] ) ) {
+            update_option( 'tabesh_ai_idle_timeout', absint( $post_data['ai_idle_timeout'] ) );
+        }
+        
+        if ( isset( $post_data['ai_chat_history_limit'] ) ) {
+            update_option( 'tabesh_ai_chat_history_limit', absint( $post_data['ai_chat_history_limit'] ) );
+        }
+        
+        if ( isset( $post_data['ai_guest_data_retention'] ) ) {
+            update_option( 'tabesh_ai_guest_data_retention', absint( $post_data['ai_guest_data_retention'] ) );
+        }
+
+        // Handle AI Browser profession routes
+        $profession_routes = array();
+        if ( isset( $post_data['ai_route_buyer'] ) ) {
+            $profession_routes['buyer'] = esc_url_raw( $post_data['ai_route_buyer'] );
+        }
+        if ( isset( $post_data['ai_route_author'] ) ) {
+            $profession_routes['author'] = esc_url_raw( $post_data['ai_route_author'] );
+        }
+        if ( isset( $post_data['ai_route_publisher'] ) ) {
+            $profession_routes['publisher'] = esc_url_raw( $post_data['ai_route_publisher'] );
+        }
+        if ( isset( $post_data['ai_route_printer'] ) ) {
+            $profession_routes['printer'] = esc_url_raw( $post_data['ai_route_printer'] );
+        }
+        
+        if ( ! empty( $profession_routes ) ) {
+            update_option( 'tabesh_ai_profession_routes', $profession_routes );
+        }
+
         // Clear the settings cache after saving to ensure fresh data is loaded
         self::clear_settings_cache();
         

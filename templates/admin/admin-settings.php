@@ -1309,6 +1309,116 @@ $admin = $tabesh->admin;
                             </p>
                         </td>
                     </tr>
+
+                    <!-- AI Browser Settings -->
+                    <tr>
+                        <th colspan="2" style="padding-top: 30px;">
+                            <h3 style="margin: 0;">🗨️ تنظیمات نوار کناری (AI Browser)</h3>
+                        </th>
+                    </tr>
+
+                    <tr>
+                        <th><label for="ai_browser_enabled">فعالسازی نوار کناری</label></th>
+                        <td>
+                            <label>
+                                <input type="checkbox" id="ai_browser_enabled" name="ai_browser_enabled" value="1"
+                                    <?php checked(get_option('tabesh_ai_browser_enabled', true), true); ?>>
+                                نمایش نوار کناری هوشمند در تمام صفحات
+                            </label>
+                            <p class="description">نوار کناری به صورت شناور در گوشه صفحه ظاهر می‌شود و به کاربران کمک می‌کند.</p>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <th><label for="ai_tracking_enabled">فعالسازی ردیابی رفتار</label></th>
+                        <td>
+                            <label>
+                                <input type="checkbox" id="ai_tracking_enabled" name="ai_tracking_enabled" value="1"
+                                    <?php checked(get_option('tabesh_ai_tracking_enabled', true), true); ?>>
+                                ردیابی رفتار کاربران برای پیشنهادات هوشمند
+                            </label>
+                            <p class="description">شامل اسکرول، کلیک و تعاملات کاربر. اطلاعات به صورت ایمن ذخیره می‌شود.</p>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <th><label for="ai_proactive_help_enabled">فعالسازی کمک پیشگیرانه</label></th>
+                        <td>
+                            <label>
+                                <input type="checkbox" id="ai_proactive_help_enabled" name="ai_proactive_help_enabled" value="1"
+                                    <?php checked(get_option('tabesh_ai_proactive_help_enabled', true), true); ?>>
+                                نمایش پیشنهادات خودکار برای کاربران گیج
+                            </label>
+                            <p class="description">وقتی کاربر مدتی بدون فعالیت می‌ماند، پیام کمک نمایش داده می‌شود.</p>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <th><label for="ai_idle_timeout">زمان انتظار غیرفعال (ثانیه)</label></th>
+                        <td>
+                            <input type="number" id="ai_idle_timeout" name="ai_idle_timeout" 
+                                value="<?php echo esc_attr(get_option('tabesh_ai_idle_timeout', 30)); ?>" 
+                                class="small-text" min="10" max="300">
+                            <p class="description">بعد از این مدت بدون فعالیت، پیام کمک نمایش داده می‌شود.</p>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <th><label for="ai_chat_history_limit">حداکثر تاریخچه گفتگو</label></th>
+                        <td>
+                            <input type="number" id="ai_chat_history_limit" name="ai_chat_history_limit" 
+                                value="<?php echo esc_attr(get_option('tabesh_ai_chat_history_limit', 20)); ?>" 
+                                class="small-text" min="5" max="100">
+                            <p class="description">تعداد پیام‌های اخیر که در تاریخچه ذخیره می‌شود.</p>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <th><label>مسیرهای پیشنهادی</label></th>
+                        <td>
+                            <p class="description" style="margin-bottom: 10px;">مسیرهای صفحات برای هر نوع کاربر:</p>
+                            
+                            <label style="display: block; margin-bottom: 8px;">
+                                <strong>خریدار:</strong>
+                                <input type="text" name="ai_route_buyer" 
+                                    value="<?php echo esc_attr(get_option('tabesh_ai_route_buyer', home_url('/order-form/'))); ?>" 
+                                    class="regular-text" placeholder="/order-form/">
+                            </label>
+
+                            <label style="display: block; margin-bottom: 8px;">
+                                <strong>نویسنده:</strong>
+                                <input type="text" name="ai_route_author" 
+                                    value="<?php echo esc_attr(get_option('tabesh_ai_route_author', home_url('/author-services/'))); ?>" 
+                                    class="regular-text" placeholder="/author-services/">
+                            </label>
+
+                            <label style="display: block; margin-bottom: 8px;">
+                                <strong>ناشر:</strong>
+                                <input type="text" name="ai_route_publisher" 
+                                    value="<?php echo esc_attr(get_option('tabesh_ai_route_publisher', home_url('/publisher-services/'))); ?>" 
+                                    class="regular-text" placeholder="/publisher-services/">
+                            </label>
+
+                            <label style="display: block; margin-bottom: 8px;">
+                                <strong>چاپخانه:</strong>
+                                <input type="text" name="ai_route_printer" 
+                                    value="<?php echo esc_attr(get_option('tabesh_ai_route_printer', home_url('/printer-services/'))); ?>" 
+                                    class="regular-text" placeholder="/printer-services/">
+                            </label>
+
+                            <p class="description">کاربران پس از انتخاب حرفه، به این صفحات هدایت می‌شوند.</p>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <th><label for="ai_guest_data_retention">مدت نگهداری داده مهمان (روز)</label></th>
+                        <td>
+                            <input type="number" id="ai_guest_data_retention" name="ai_guest_data_retention" 
+                                value="<?php echo esc_attr(get_option('tabesh_ai_guest_data_retention', 90)); ?>" 
+                                class="small-text" min="7" max="365">
+                            <p class="description">داده‌های کاربران مهمان بعد از این مدت حذف می‌شود.</p>
+                        </td>
+                    </tr>
                 </table>
             </div>
 
