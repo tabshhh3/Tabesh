@@ -1,5 +1,5 @@
 /**
- * AI Chat Interface JavaScript
+ * AI Chat Interface JavaScript - Split Screen Layout
  *
  * @package Tabesh
  */
@@ -7,8 +7,8 @@
 (function($) {
     'use strict';
 
-    // Chat state
-    let isOpen = false;
+    // Chat states: 'hidden', 'minimized', 'expanded'
+    let chatState = 'hidden';
     let isTyping = false;
 
     // Initialize chat
@@ -16,18 +16,41 @@
         const toggle = $('#tabesh-ai-toggle');
         const container = $('.tabesh-ai-chat-container');
         const minimize = $('.tabesh-ai-minimize');
+        const closeBtn = $('.tabesh-ai-close');
         const form = $('#tabesh-ai-chat-form');
         const input = $('#tabesh-ai-input');
         const messages = $('#tabesh-ai-messages');
 
-        // Toggle chat
+        // Wrap main content if not already wrapped
+        wrapMainContent();
+
+        // Start with hidden state by default (less intrusive)
+        // Check if user has a saved preference
+        const savedState = localStorage.getItem('tabesh-ai-chat-state') || 'hidden';
+        setChatState(savedState);
+
+        // Toggle chat from minimized bar or floating button
         toggle.on('click', function() {
-            toggleChat();
+            if (chatState === 'minimized') {
+                setChatState('expanded');
+            } else if (chatState === 'expanded') {
+                setChatState('minimized');
+            } else if (chatState === 'hidden') {
+                setChatState('minimized');
+            }
         });
 
+        // Minimize button - minimize to thin bar
         minimize.on('click', function() {
-            toggleChat();
+            setChatState('minimized');
         });
+
+        // Close button - completely hide
+        if (closeBtn.length) {
+            closeBtn.on('click', function() {
+                setChatState('hidden');
+            });
+        }
 
         // Handle form submission
         form.on('submit', function(e) {
@@ -60,16 +83,56 @@
         readFormData();
     }
 
-    // Toggle chat visibility
-    function toggleChat() {
-        isOpen = !isOpen;
-        const container = $('.tabesh-ai-chat-container');
+    // Wrap main content for split-screen layout
+    function wrapMainContent() {
+        if ($('.tabesh-ai-main-content').length) {
+            return; // Already wrapped
+        }
+
+        // Create wrapper without detaching chat elements
+        const chatElements = $('.tabesh-ai-chat-container, .tabesh-ai-chat-toggle');
         
-        if (isOpen) {
-            container.addClass('active');
-            $('#tabesh-ai-input').focus();
-        } else {
-            container.removeClass('active');
+        // Wrap all body children except chat elements
+        $('body > *').not(chatElements).wrapAll('<div class="tabesh-ai-main-content"></div>');
+    }
+
+    // Set chat state
+    function setChatState(newState) {
+        const container = $('.tabesh-ai-chat-container');
+        const toggle = $('.tabesh-ai-chat-toggle');
+        const body = $('body');
+
+        // Remove all state classes
+        body.removeClass('tabesh-ai-split-hidden tabesh-ai-split-minimized tabesh-ai-split-active');
+        container.removeClass('active minimized');
+        toggle.removeClass('minimized hidden');
+
+        chatState = newState;
+
+        // Save state to localStorage
+        try {
+            localStorage.setItem('tabesh-ai-chat-state', newState);
+        } catch (e) {
+            // Silently fail if localStorage is not available
+        }
+
+        switch (newState) {
+            case 'expanded':
+                body.addClass('tabesh-ai-split-active');
+                container.addClass('active');
+                $('#tabesh-ai-input').focus();
+                break;
+
+            case 'minimized':
+                body.addClass('tabesh-ai-split-minimized');
+                container.addClass('minimized');
+                toggle.addClass('minimized');
+                break;
+
+            case 'hidden':
+                body.addClass('tabesh-ai-split-hidden');
+                toggle.addClass('hidden');
+                break;
         }
     }
 
