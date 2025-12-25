@@ -1,12 +1,7 @@
 /**
- * AI Browser Sidebar JavaScript - Modern Redesign
+ * AI Browser Sidebar JavaScript
  *
- * Handles the main logic for the AI Browser sidebar interface with:
- * - 3 states: closed, open, minimized
- * - Desktop: 30% sidebar with 70% usable website (side-by-side)
- * - Mobile: 70% chatbot coverage from bottom
- * - Vertical control bar for minimize/close
- * - Unread message notifications with pulsing badge
+ * Handles the main logic for the AI Browser sidebar interface.
  *
  * @package Tabesh
  */
@@ -15,14 +10,8 @@
     'use strict';
 
     // State management
-    const State = {
-        CLOSED: 'closed',
-        OPEN: 'open',
-        MINIMIZED: 'minimized',
-        GUIDING: 'guiding'
-    };
-
-    let currentState = State.CLOSED;
+    let isOpen = false;
+    let isMinimized = false;
     let isTyping = false;
     let guestUUID = null;
     let conversationState = 'greeting'; // greeting, profession, show_target, chat
@@ -31,8 +20,6 @@
     let interactionCount = 0;
     let idleTimeout = null;
     let lastInteractionTime = Date.now();
-    let unreadCount = 0;
-    let isFirstOpen = true;
 
     /**
      * Initialize AI Browser
@@ -44,53 +31,43 @@
         // Set up event listeners
         setupEventListeners();
 
+        // Show welcome message
+        showWelcomeMessage();
+
         // Load user profile if available
         loadUserProfile();
-
-        // Set initial state
-        setState(State.CLOSED);
     }
 
     /**
      * Setup event listeners
      */
     function setupEventListeners() {
-        // Toggle button click (main floating icon)
+        // Toggle button click
         $('#tabesh-ai-browser-toggle').on('click', function() {
-            if (currentState === State.CLOSED) {
-                openSidebar();
-            }
+            toggleSidebar();
         });
 
         // Close button click
-        $('#tabesh-ai-close').on('click', function(e) {
-            e.stopPropagation();
+        $('#tabesh-ai-browser-close').on('click', function() {
             closeSidebar();
         });
 
         // Minimize button click
-        $('#tabesh-ai-minimize').on('click', function(e) {
+        $('#tabesh-ai-browser-minimize').on('click', function(e) {
             e.stopPropagation();
             minimizeSidebar();
         });
 
-        // Expand button click (from minimized state)
-        $('#tabesh-ai-expand').on('click', function(e) {
-            e.stopPropagation();
-            if (currentState === State.MINIMIZED) {
-                openSidebar();
-            }
-        });
-
-        // Control bar click in minimized state expands
-        $('.tabesh-ai-control-bar').on('click', function() {
-            if (currentState === State.MINIMIZED) {
-                openSidebar();
+        // Header click when minimized - restore
+        $('.tabesh-ai-browser-header').on('click', function() {
+            if (isMinimized) {
+                restoreSidebar();
             }
         });
 
         // Overlay click (mobile only)
         $('#tabesh-ai-browser-overlay').on('click', function() {
+            // Only close on mobile devices
             if (window.innerWidth <= 768) {
                 closeSidebar();
             }
@@ -117,15 +94,9 @@
 
         // Handle escape key
         $(document).on('keydown', function(e) {
-            if (e.key === 'Escape' && currentState === State.OPEN) {
-                minimizeSidebar();
+            if (e.key === 'Escape' && isOpen) {
+                closeSidebar();
             }
-        });
-
-        // Quick action buttons - use event delegation for dynamically created elements
-        $(document).on('click', '.quick-action-btn', function() {
-            const action = $(this).data('action');
-            handleQuickAction(action);
         });
 
         // Track user interactions for idle detection
@@ -136,139 +107,70 @@
     }
 
     /**
-     * Set UI state
+     * Toggle sidebar open/close
      */
-    function setState(newState) {
-        currentState = newState;
-        const $sidebar = $('#tabesh-ai-browser-sidebar');
-        const $overlay = $('#tabesh-ai-browser-overlay');
-        const $toggle = $('#tabesh-ai-browser-toggle');
-        const $body = $('body');
-
-        // Remove all state classes
-        $sidebar.removeClass('active minimized');
-        $overlay.removeClass('active');
-        $body.removeClass('ai-browser-open ai-browser-minimized');
-        $toggle.show();
-
-        switch (newState) {
-            case State.OPEN:
-                $sidebar.addClass('active');
-                $overlay.addClass('active');
-                $body.addClass('ai-browser-open');
-                $toggle.hide();
-                clearUnreadCount();
-                $('#tabesh-ai-browser-input').focus();
-                break;
-                
-            case State.MINIMIZED:
-                $sidebar.addClass('active minimized');
-                $body.addClass('ai-browser-minimized');
-                $toggle.hide();
-                break;
-                
-            case State.CLOSED:
-            default:
-                // All classes already removed
-                $toggle.show();
-                break;
+    function toggleSidebar() {
+        if (isOpen) {
+            closeSidebar();
+        } else {
+            openSidebar();
         }
+    }
 
-        // Track state change
+    /**
+     * Open sidebar
+     */
+    function openSidebar() {
+        isOpen = true;
+        $('#tabesh-ai-browser-sidebar').addClass('active').removeClass('minimized');
+        $('#tabesh-ai-browser-overlay').addClass('active');
+        $('body').addClass('ai-browser-open');
+        $('#tabesh-ai-browser-input').focus();
+        
+        // Hide notification badge
+        hideNotificationBadge();
+
+        // Track page view
         if (window.tabeshAITracker) {
-            window.tabeshAITracker.trackEvent('sidebar_state_change', {
-                new_state: newState,
+            window.tabeshAITracker.trackEvent('sidebar_opened', {
+                page_url: window.location.href,
+                referrer: document.referrer
+            });
+        }
+    }
+
+    /**
+     * Close sidebar
+     */
+    function closeSidebar() {
+        isOpen = false;
+        isMinimized = false;
+        $('#tabesh-ai-browser-sidebar').removeClass('active minimized');
+        $('#tabesh-ai-browser-overlay').removeClass('active');
+        $('body').removeClass('ai-browser-open');
+    }
+
+    /**
+     * Minimize sidebar
+     */
+    function minimizeSidebar() {
+        isMinimized = true;
+        $('#tabesh-ai-browser-sidebar').addClass('minimized');
+        
+        // Track minimization
+        if (window.tabeshAITracker) {
+            window.tabeshAITracker.trackEvent('sidebar_minimized', {
                 page_url: window.location.href
             });
         }
     }
 
     /**
-     * Open sidebar (from closed or minimized)
+     * Restore minimized sidebar
      */
-    function openSidebar() {
-        const shouldShowWelcome = isFirstOpen && $('#tabesh-ai-browser-messages').children().length === 0;
-        
-        setState(State.OPEN);
-
-        if (shouldShowWelcome) {
-            showWelcomeMessage();
-            isFirstOpen = false;
-        }
-    }
-
-    /**
-     * Close sidebar completely
-     */
-    function closeSidebar() {
-        setState(State.CLOSED);
-    }
-
-    /**
-     * Minimize sidebar (side rail on desktop, bottom bar on mobile)
-     */
-    function minimizeSidebar() {
-        setState(State.MINIMIZED);
-    }
-
-    /**
-     * Handle quick action buttons
-     */
-    function handleQuickAction(action) {
-        switch (action) {
-            case 'help':
-                addMessage('راهنمایی می‌خواهم', 'user');
-                setTimeout(function() {
-                    addMessage('البته! چه کمکی می‌تونم بکنم؟ می‌توانید سوال خود را بپرسید یا از گزینه‌های زیر استفاده کنید:', 'bot');
-                    showProfessionQuestions();
-                }, 500);
-                break;
-                
-            case 'order':
-                addMessage('می‌خواهم سفارش ثبت کنم', 'user');
-                detectNavigationIntentFromMessage('سفارش');
-                break;
-                
-            case 'price':
-                addMessage('قیمت چاپ می‌خواهم', 'user');
-                detectNavigationIntentFromMessage('قیمت');
-                break;
-        }
-    }
-
-    /**
-     * Update unread message count
-     */
-    function addUnreadMessage() {
-        if (currentState !== State.OPEN) {
-            unreadCount++;
-            updateUnreadBadge();
-        }
-    }
-
-    /**
-     * Clear unread count
-     */
-    function clearUnreadCount() {
-        unreadCount = 0;
-        updateUnreadBadge();
-    }
-
-    /**
-     * Update unread badge display
-     */
-    function updateUnreadBadge() {
-        const $badge = $('#tabesh-ai-badge');
-        const $minimizedBadge = $('#tabesh-ai-minimized-badge');
-        
-        if (unreadCount > 0) {
-            const displayCount = unreadCount > 9 ? '9+' : unreadCount;
-            $badge.text(displayCount).addClass('active');
-            $minimizedBadge.text(displayCount).addClass('active');
-        } else {
-            $badge.removeClass('active');
-            $minimizedBadge.removeClass('active');
-        }
+    function restoreSidebar() {
+        isMinimized = false;
+        $('#tabesh-ai-browser-sidebar').removeClass('minimized');
     }
 
     /**
@@ -278,10 +180,12 @@
         lastInteractionTime = Date.now();
         interactionCount++;
         
+        // Clear idle timeout
         if (idleTimeout) {
             clearTimeout(idleTimeout);
         }
         
+        // Restart idle detection
         startIdleDetection();
     }
 
@@ -289,10 +193,12 @@
      * Start idle detection
      */
     function startIdleDetection() {
+        // Clear existing timeout
         if (idleTimeout) {
             clearTimeout(idleTimeout);
         }
         
+        // Set timeout for 30 seconds of inactivity
         idleTimeout = setTimeout(function() {
             handleIdleUser();
         }, 30000);
@@ -302,9 +208,11 @@
      * Handle idle user - offer proactive help
      */
     function handleIdleUser() {
-        if (currentState === State.CLOSED && interactionCount > 5) {
-            addUnreadMessage();
+        // Only show if sidebar is not open and user has been on page for a while
+        if (!isOpen && interactionCount > 5) {
+            showNotificationBadge(1);
             
+            // Track idle state
             if (window.tabeshAITracker) {
                 window.tabeshAITracker.trackEvent('user_idle', {
                     page_url: window.location.href,
@@ -313,7 +221,9 @@
                 });
             }
             
+            // Check if user seems confused (many interactions but still on same page)
             if (interactionCount > 20) {
+                // User seems stuck, offer highlighted tour
                 setTimeout(function() {
                     offerProactiveHelp();
                 }, 2000);
@@ -325,7 +235,7 @@
      * Offer proactive help when user seems stuck
      */
     function offerProactiveHelp() {
-        if (currentState === State.CLOSED) {
+        if (!isOpen) {
             openSidebar();
             
             // Add proactive message
@@ -377,7 +287,26 @@
             addMessage('در این صفحه راهنمای ویژه‌ای ندارم. سوالی دارید؟', 'bot');
         }
         
-        minimizeSidebar();
+        closeSidebar();
+    }
+
+    /**
+     * Show notification badge
+     */
+    function showNotificationBadge(count) {
+        const $badge = $('.tabesh-ai-browser-notification-badge');
+        if (count > 0) {
+            $badge.text(count).fadeIn();
+        } else {
+            $badge.fadeOut();
+        }
+    }
+
+    /**
+     * Hide notification badge
+     */
+    function hideNotificationBadge() {
+        showNotificationBadge(0);
     }
 
     /**
@@ -645,16 +574,6 @@
     }
 
     /**
-     * Detect navigation intent and show offer
-     */
-    function detectNavigationIntentFromMessage(message) {
-        const intent = detectNavigationIntent(message);
-        if (intent.detected) {
-            showNavigationOffer(intent.intentType, intent.keyword);
-        }
-    }
-
-    /**
      * Smart search for pages using the AI indexer
      */
     function smartSearchPages(query, callback) {
@@ -793,7 +712,7 @@
             askTourPermission(function(granted) {
                 if (granted) {
                     addMessage('راهنمای این صفحه را برایتان نشان می‌دهم! 👇', 'bot');
-                    minimizeSidebar();
+                    closeSidebar();
                     
                     setTimeout(function() {
                         startGuidedTour();
@@ -1030,11 +949,6 @@
         $messages.append(messageHtml);
         scrollToBottom();
         
-        // Track unread messages when not in open state
-        if (type === 'bot' && text && currentState !== State.OPEN) {
-            addUnreadMessage();
-        }
-        
         // Save to chat history (only actual text messages, not action buttons)
         if (text && text.length > 0) {
             saveMessageToHistory(text, type === 'user' ? 'user' : 'assistant');
@@ -1046,7 +960,7 @@
      */
     function showTyping() {
         isTyping = true;
-        $('#tabesh-ai-typing').addClass('active');
+        $('.tabesh-ai-browser-typing').show();
         scrollToBottom();
     }
 
@@ -1055,7 +969,7 @@
      */
     function hideTyping() {
         isTyping = false;
-        $('#tabesh-ai-typing').removeClass('active');
+        $('.tabesh-ai-browser-typing').hide();
     }
 
     /**
@@ -1295,10 +1209,8 @@
     window.tabeshAIBrowserAPI = {
         openSidebar: openSidebar,
         closeSidebar: closeSidebar,
-        minimizeSidebar: minimizeSidebar,
         addMessage: addMessage,
-        getGuestUUID: function() { return guestUUID; },
-        getState: function() { return currentState; }
+        getGuestUUID: function() { return guestUUID; }
     };
 
 })(jQuery);
