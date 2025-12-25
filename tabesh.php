@@ -248,13 +248,6 @@ final class Tabesh {
 	public $ai;
 
 	/**
-	 * AI Browser handler
-	 *
-	 * @var Tabesh_AI_Browser
-	 */
-	public $ai_browser;
-
-	/**
 	 * Cache for settings to avoid redundant database queries
 	 *
 	 * @var array
@@ -335,8 +328,6 @@ final class Tabesh {
 		$this->product_pricing = new Tabesh_Product_Pricing();
 		// Initialize AI system
 		$this->ai = new Tabesh_AI();
-		// Initialize AI Browser
-		$this->ai_browser = new Tabesh_AI_Browser();
 
 		// Register REST API routes
 		add_action( 'rest_api_init', array( $this, 'register_rest_routes' ) );
@@ -648,62 +639,6 @@ final class Tabesh {
             KEY created_at (created_at)
         ) $charset_collate;";
 
-		// AI User Profiles table - stores logged-in user AI profiles
-		$table_ai_user_profiles = $wpdb->prefix . 'tabesh_ai_user_profiles';
-		$sql_ai_user_profiles   = "CREATE TABLE IF NOT EXISTS $table_ai_user_profiles (
-            id bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
-            user_id bigint(20) UNSIGNED NOT NULL,
-            profession varchar(100) DEFAULT NULL,
-            interests longtext DEFAULT NULL,
-            preferences longtext DEFAULT NULL,
-            behavior_data longtext DEFAULT NULL,
-            chat_history longtext DEFAULT NULL,
-            first_name varchar(100) DEFAULT NULL,
-            created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            updated_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-            PRIMARY KEY (id),
-            UNIQUE KEY user_id (user_id),
-            KEY profession (profession)
-        ) $charset_collate;";
-
-		// AI Guest Profiles table - stores guest visitor AI profiles
-		$table_ai_guest_profiles = $wpdb->prefix . 'tabesh_ai_guest_profiles';
-		$sql_ai_guest_profiles   = "CREATE TABLE IF NOT EXISTS $table_ai_guest_profiles (
-            id bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
-            guest_uuid varchar(36) NOT NULL,
-            name varchar(100) DEFAULT NULL,
-            mobile varchar(20) DEFAULT NULL,
-            profession varchar(100) DEFAULT NULL,
-            interests longtext DEFAULT NULL,
-            preferences longtext DEFAULT NULL,
-            behavior_data longtext DEFAULT NULL,
-            chat_history longtext DEFAULT NULL,
-            created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            updated_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-            expires_at datetime DEFAULT NULL,
-            PRIMARY KEY (id),
-            UNIQUE KEY guest_uuid (guest_uuid),
-            KEY expires_at (expires_at)
-        ) $charset_collate;";
-
-		// AI Behavior Logs table - stores user behavior tracking data
-		$table_ai_behavior_logs = $wpdb->prefix . 'tabesh_ai_behavior_logs';
-		$sql_ai_behavior_logs   = "CREATE TABLE IF NOT EXISTS $table_ai_behavior_logs (
-            id bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
-            user_id bigint(20) UNSIGNED DEFAULT NULL,
-            guest_uuid varchar(36) DEFAULT NULL,
-            page_url text DEFAULT NULL,
-            event_type varchar(50) NOT NULL,
-            event_data longtext DEFAULT NULL,
-            referrer text DEFAULT NULL,
-            created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            PRIMARY KEY (id),
-            KEY user_id (user_id),
-            KEY guest_uuid (guest_uuid),
-            KEY event_type (event_type),
-            KEY created_at (created_at)
-        ) $charset_collate;";
-
 		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 		dbDelta( $sql_orders );
 		dbDelta( $sql_settings );
@@ -716,9 +651,6 @@ final class Tabesh {
 		dbDelta( $sql_document_metadata );
 		dbDelta( $sql_download_tokens );
 		dbDelta( $sql_security_logs );
-		dbDelta( $sql_ai_user_profiles );
-		dbDelta( $sql_ai_guest_profiles );
-		dbDelta( $sql_ai_behavior_logs );
 	}
 
 	/**
