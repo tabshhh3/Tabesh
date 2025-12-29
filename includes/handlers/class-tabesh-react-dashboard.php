@@ -169,9 +169,24 @@ class Tabesh_React_Dashboard {
 	 * @return string
 	 */
 	private function render_php_dashboard() {
-		// Load the PHP template.
+		// Validate template file exists.
+		$template_path = TABESH_PLUGIN_DIR . 'templates/admin/shortcode-admin-dashboard.php';
+
+		if ( ! file_exists( $template_path ) ) {
+			// Log error if debug mode is enabled.
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				error_log( 'Tabesh: PHP dashboard template file not found at ' . $template_path );
+			}
+			return '<div class="tabesh-error">' .
+				'<p>' . esc_html__( 'خطا: فایل قالب داشبورد یافت نشد.', 'tabesh' ) . '</p>' .
+				'<p>' . esc_html__( 'Error: Dashboard template file not found.', 'tabesh' ) . '</p>' .
+				'</div>';
+		}
+
+		// Load the PHP template using output buffering.
+		// Note: The template file includes its own permission checks and ABSPATH validation.
 		ob_start();
-		include TABESH_PLUGIN_DIR . 'templates/admin/shortcode-admin-dashboard.php';
+		include $template_path;
 		return ob_get_clean();
 	}
 }
