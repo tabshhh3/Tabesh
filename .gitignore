@@ -8,7 +8,6 @@
 
 # Node modules
 /node_modules/
-/assets/react/node_modules/
 
 # IDE
 .vscode/
@@ -22,8 +21,6 @@ Thumbs.db
 # Build artifacts
 /dist/
 /build/
-/assets/dist/
-/assets/react/dist/
 
 # Logs
 *.log
