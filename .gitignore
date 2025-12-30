@@ -22,7 +22,9 @@ Thumbs.db
 # Build artifacts
 /dist/
 /build/
-/assets/dist/
+# Allow React admin dashboard build files (required for plugin to work)
+/assets/dist/*
+!/assets/dist/admin-dashboard/
 /assets/react/dist/
 
 # Logs
