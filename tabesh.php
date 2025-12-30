@@ -1409,6 +1409,47 @@ final class Tabesh {
 			)
 		);
 
+		// Admin Order Form routes
+		register_rest_route(
+			TABESH_REST_NAMESPACE,
+			'/admin/form-config',
+			array(
+				'methods'             => 'GET',
+				'callback'            => array( $this->admin_order_form, 'rest_get_form_config' ),
+				'permission_callback' => array( $this->admin_order_form, 'user_has_access' ),
+			)
+		);
+
+		register_rest_route(
+			TABESH_REST_NAMESPACE,
+			'/admin/search-customers',
+			array(
+				'methods'             => 'GET',
+				'callback'            => array( $this, 'rest_search_customers' ),
+				'permission_callback' => array( $this->admin_order_form, 'user_has_access' ),
+			)
+		);
+
+		register_rest_route(
+			TABESH_REST_NAMESPACE,
+			'/admin/create-customer',
+			array(
+				'methods'             => 'POST',
+				'callback'            => array( $this, 'rest_create_customer' ),
+				'permission_callback' => array( $this->admin_order_form, 'user_has_access' ),
+			)
+		);
+
+		register_rest_route(
+			TABESH_REST_NAMESPACE,
+			'/admin/submit-order',
+			array(
+				'methods'             => 'POST',
+				'callback'            => array( $this->admin_order_creator, 'rest_submit_order' ),
+				'permission_callback' => array( $this->admin_order_form, 'user_has_access' ),
+			)
+		);
+
 		register_rest_route(
 			TABESH_REST_NAMESPACE,
 			'/files/generate-token',
@@ -1866,6 +1907,179 @@ final class Tabesh {
 				'total'   => $user_query->get_total(),
 			),
 			200
+		);
+	}
+
+	/**
+	 * REST: Search customers for admin order form
+	 *
+	 * @param WP_REST_Request $request Request object.
+	 * @return WP_REST_Response Response object.
+	 */
+	public function rest_search_customers( $request ) {
+		$query = sanitize_text_field( $request->get_param( 'q' ) ?? '' );
+
+		if ( strlen( $query ) < 2 ) {
+			return new WP_REST_Response( array(), 200 );
+		}
+
+		// Search by name, email, phone, or username
+		$args = array(
+			'search'         => '*' . $query . '*',
+			'search_columns' => array( 'user_login', 'user_nicename', 'display_name', 'user_email' ),
+			'number'         => 10,
+			'orderby'        => 'display_name',
+			'order'          => 'ASC',
+		);
+
+		$user_query = new WP_User_Query( $args );
+		$users      = $user_query->get_results();
+
+		// Also search by phone in user meta
+		global $wpdb;
+		$phone_users = $wpdb->get_col(
+			$wpdb->prepare(
+				"SELECT DISTINCT user_id FROM {$wpdb->usermeta} 
+				WHERE meta_key = 'billing_phone' 
+				AND meta_value LIKE %s 
+				LIMIT 10",
+				'%' . $wpdb->esc_like( $query ) . '%'
+			)
+		);
+
+		// Merge results
+		if ( ! empty( $phone_users ) ) {
+			foreach ( $phone_users as $user_id ) {
+				$user = get_userdata( $user_id );
+				if ( $user && ! in_array( $user, $users, true ) ) {
+					$users[] = $user;
+				}
+			}
+		}
+
+		$formatted_users = array();
+		foreach ( $users as $user ) {
+			$formatted_users[] = array(
+				'ID'            => $user->ID,
+				'display_name'  => $user->display_name,
+				'user_email'    => $user->user_email,
+				'user_login'    => $user->user_login,
+				'billing_phone' => get_user_meta( $user->ID, 'billing_phone', true ),
+				'billing_state' => get_user_meta( $user->ID, 'billing_state', true ),
+			);
+		}
+
+		return new WP_REST_Response( $formatted_users, 200 );
+	}
+
+	/**
+	 * REST: Create a new customer
+	 *
+	 * @param WP_REST_Request $request Request object.
+	 * @return WP_REST_Response Response object.
+	 */
+	public function rest_create_customer( $request ) {
+		$params = $request->get_json_params();
+
+		// Validate required fields
+		$mobile     = sanitize_text_field( $params['mobile'] ?? '' );
+		$first_name = sanitize_text_field( $params['first_name'] ?? '' );
+		$last_name  = sanitize_text_field( $params['last_name'] ?? '' );
+
+		if ( empty( $mobile ) || empty( $first_name ) || empty( $last_name ) ) {
+			return new WP_REST_Response(
+				array(
+					'success' => false,
+					'error'   => __( 'تمام فیلدها الزامی هستند', 'tabesh' ),
+				),
+				400
+			);
+		}
+
+		// Validate mobile format
+		if ( ! preg_match( '/^09[0-9]{9}$/', $mobile ) ) {
+			return new WP_REST_Response(
+				array(
+					'success' => false,
+					'error'   => __( 'فرمت شماره موبایل نامعتبر است', 'tabesh' ),
+				),
+				400
+			);
+		}
+
+		// Check if user with this mobile already exists
+		global $wpdb;
+		$existing_user_id = $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT user_id FROM {$wpdb->usermeta} WHERE meta_key = 'billing_phone' AND meta_value = %s",
+				$mobile
+			)
+		);
+
+		if ( $existing_user_id ) {
+			return new WP_REST_Response(
+				array(
+					'success' => false,
+					'error'   => __( 'کاربری با این شماره موبایل قبلاً ثبت شده است', 'tabesh' ),
+				),
+				400
+			);
+		}
+
+		// Create username from mobile
+		$username = 'user_' . $mobile;
+
+		// Check if username exists
+		if ( username_exists( $username ) ) {
+			$username = $username . '_' . wp_rand( 100, 999 );
+		}
+
+		// Generate random password
+		$password = wp_generate_password( 12, false );
+
+		// Create user
+		$user_id = wp_create_user( $username, $password, $mobile . '@temp.local' );
+
+		if ( is_wp_error( $user_id ) ) {
+			return new WP_REST_Response(
+				array(
+					'success' => false,
+					'error'   => $user_id->get_error_message(),
+				),
+				500
+			);
+		}
+
+		// Update user meta
+		update_user_meta( $user_id, 'first_name', $first_name );
+		update_user_meta( $user_id, 'last_name', $last_name );
+		update_user_meta( $user_id, 'billing_phone', $mobile );
+		update_user_meta( $user_id, 'billing_first_name', $first_name );
+		update_user_meta( $user_id, 'billing_last_name', $last_name );
+
+		// Update display name
+		wp_update_user(
+			array(
+				'ID'           => $user_id,
+				'display_name' => $first_name . ' ' . $last_name,
+			)
+		);
+
+		// Get created user
+		$user = get_userdata( $user_id );
+
+		return new WP_REST_Response(
+			array(
+				'success' => true,
+				'data'    => array(
+					'ID'            => $user->ID,
+					'display_name'  => $user->display_name,
+					'user_email'    => $user->user_email,
+					'user_login'    => $user->user_login,
+					'billing_phone' => $mobile,
+				),
+			),
+			201
 		);
 	}
 

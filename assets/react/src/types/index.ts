@@ -134,3 +134,6 @@ declare global {
     tabeshConfig: TabeshConfig
   }
 }
+
+// Re-export order form types
+export type { OrderFormData, FormConfig, Customer, PriceCalculation } from './orderForm'
