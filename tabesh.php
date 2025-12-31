@@ -2401,6 +2401,7 @@ final class Tabesh {
 				'apiUrl'         => rest_url( TABESH_REST_NAMESPACE ),
 				'nonce'          => wp_create_nonce( 'wp_rest' ),
 				'userOrdersUrl'  => home_url( '/user-orders/' ), // Default redirect after order submission
+				'licenseTypes'   => $this->get_setting( 'license_types', array() ),
 				'i18n'           => array(
 					'loading'       => __( 'در حال بارگذاری...', 'tabesh' ),
 					'calculating'   => __( 'در حال محاسبه قیمت...', 'tabesh' ),
